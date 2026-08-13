@@ -8,7 +8,7 @@ interface UseWebSocketOptions {
 export function useWebSocket({ token, onMessage }: UseWebSocketOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const connect = useCallback(() => {
     if (!token) return;
