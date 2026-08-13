@@ -30,8 +30,7 @@ services:
       - SMTP_PORT=2525
     ports:
       - "${BACKEND_PORT:-8012}:8000"
-      - "${SMTP_REAL_PORT:-25}:2525"    # SMTP Port 25 for real incoming mail
-      - "${SMTP_ALT_PORT:-2512}:2525"   # Alternative SMTP port with 12
+      - "${SMTP_PORT:-2512}:2525"
     depends_on:
       postgres:
         condition: service_healthy
