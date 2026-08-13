@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+export PYTHONPATH="/app:$PYTHONPATH"
+
 echo "Checking PostgreSQL connection..."
 python -c "
 import asyncio, os, sys, time

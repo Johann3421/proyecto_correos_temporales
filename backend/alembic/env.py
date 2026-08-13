@@ -1,3 +1,12 @@
+import sys
+import os
+from pathlib import Path
+
+# Ensure root backend directory (/app) is on sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 import asyncio
 from logging.config import fileConfig
 from sqlalchemy import pool
