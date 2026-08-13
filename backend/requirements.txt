@@ -1,0 +1,12 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+sqlalchemy[asyncio]>=2.0.28
+asyncpg>=0.29.0
+alembic>=1.13.1
+pydantic-settings>=2.2.1
+aiosmtpd>=1.4.5
+apscheduler>=3.10.4
+bleach>=6.1.0
+python-multipart>=0.0.9
+slowapi>=0.1.9
+websockets>=12.0
