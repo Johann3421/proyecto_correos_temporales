@@ -1,14 +1,14 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: tempmail_postgres
+    container_name: ${COMPOSE_PROJECT_NAME:-airinbox}_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-tempmail}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-54312}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,17 +21,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: tempmail_backend
+    container_name: ${COMPOSE_PROJECT_NAME:-airinbox}_backend
     restart: always
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tempmail}
-      - DOMAINS=${DOMAINS:-tempmail.local,dispostable.dev}
+      - DOMAINS=${DOMAINS:-correos.abadgroup.tech}
       - SMTP_HOST=0.0.0.0
       - SMTP_PORT=2525
     ports:
-      - "8000:8000"
-      - "25:2525"    # SMTP Port 25 mapped to internal 2525 for Dokploy/Real Mail
-      - "2525:2525"  # Direct SMTP Port 2525 access
+      - "${BACKEND_PORT:-8012}:8000"
+      - "${SMTP_REAL_PORT:-25}:2525"    # SMTP Port 25 for real incoming mail
+      - "${SMTP_ALT_PORT:-2512}:2525"   # Alternative SMTP port with 12
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,10 +40,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: tempmail_frontend
+    container_name: ${COMPOSE_PROJECT_NAME:-airinbox}_frontend
     restart: always
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT:-3012}:80"
     depends_on:
       - backend
 
