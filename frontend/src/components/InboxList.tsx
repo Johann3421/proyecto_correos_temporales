@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Paperclip, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
+import { Paperclip, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
 import { MessageSummary } from '../services/api';
 import { formatTimeAgo } from '../utils/formatters';
 
@@ -9,101 +9,90 @@ interface InboxListProps {
   onSelectMessage: (id: string) => void;
 }
 
-function getSenderInitial(from: string): string {
-  if (!from) return '?';
-  const clean = from.replace(/<.*?>/, '').trim();
-  return clean.charAt(0).toUpperCase() || '?';
-}
-
-function getAvatarColor(char: string): string {
-  const colors = [
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-purple-500 to-pink-600',
-    'from-amber-500 to-orange-600',
-    'from-cyan-500 to-blue-600'
-  ];
-  const idx = char.charCodeAt(0) % colors.length;
-  return colors[idx];
-}
-
 export const InboxList: React.FC<InboxListProps> = ({
   messages,
   selectedMessageId,
-  onSelectMessage
+  onSelectMessage,
 }) => {
   return (
-    <div className="w-full glass-card rounded-3xl overflow-hidden shadow-glass dark:shadow-glass-dark">
-      {/* Top Header */}
-      <div className="p-4 sm:p-5 border-b border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-apple-blue/10 dark:bg-apple-blueDark/20 text-apple-blue dark:text-apple-blueDark flex items-center justify-center">
-            <InboxIcon className="w-4 h-4" />
-          </div>
-          <h2 className="font-extrabold text-base text-studio-900 dark:text-white tracking-tight">
-            Bandeja de Entrada
-          </h2>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
+        <div className="flex items-center gap-2">
+          <InboxIcon className="w-4 h-4 text-slate-500" />
+          <span className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Mensajes recibidos
+          </span>
         </div>
-        <span className="px-3 py-1 rounded-full glass-pill text-studio-700 dark:text-studio-300 text-xs font-bold">
-          {messages.length} {messages.length === 1 ? 'mensaje' : 'mensajes'}
+        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          {messages.length}
         </span>
       </div>
 
-      {/* Message Items */}
-      <div className="divide-y divide-black/[0.04] dark:divide-white/[0.06] max-h-[520px] overflow-y-auto">
+      {/* Message Rows */}
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto">
         {messages.map((msg) => {
           const isSelected = msg.id === selectedMessageId;
-          const initial = getSenderInitial(msg.from_address);
-          const avatarGradient = getAvatarColor(initial);
 
           return (
             <button
               key={msg.id}
               onClick={() => onSelectMessage(msg.id)}
-              className={`w-full text-left p-4 sm:p-5 transition-all flex items-start justify-between gap-3 group relative ${
+              className={`w-full text-left p-4 transition-colors flex items-start justify-between gap-3 ${
                 isSelected
-                  ? 'bg-apple-blue/10 dark:bg-apple-blueDark/15 border-l-4 border-l-apple-blue dark:border-l-apple-blueDark'
-                  : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
+                  ? 'bg-cobalt-50 dark:bg-cobalt-950/40 border-l-4 border-l-cobalt-600'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
             >
-              {/* Avatar Initial with subtle gradient */}
-              <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${avatarGradient} text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm shadow-black/10`}>
-                {initial}
+              {/* Unread indicator */}
+              <div className="pt-1.5 shrink-0">
+                {!msg.is_read ? (
+                  <span className="w-2.5 h-2.5 rounded-full bg-cobalt-600 block" title="Mensaje no leído" />
+                ) : (
+                  <span className="w-2.5 h-2.5 rounded-full bg-transparent block" />
+                )}
               </div>
 
-              {/* Message Details */}
+              {/* Message Summary */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {!msg.is_read && (
-                      <span className="w-2 h-2 rounded-full bg-apple-blue shrink-0 shadow-glow-blue/50" />
-                    )}
-                    <span className={`text-sm truncate ${!msg.is_read ? 'font-extrabold text-studio-900 dark:text-white' : 'font-semibold text-studio-700 dark:text-studio-300'}`}>
-                      {msg.from_address}
-                    </span>
-                  </div>
-
-                  <span className="text-xs text-studio-400 dark:text-studio-500 shrink-0 font-medium">
+                  <span
+                    className={`text-sm truncate ${
+                      !msg.is_read
+                        ? 'font-bold text-slate-900 dark:text-white'
+                        : 'font-medium text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {msg.from_address}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
                     {formatTimeAgo(msg.received_at)}
                   </span>
                 </div>
 
-                <p className={`text-xs sm:text-sm truncate mb-1.5 ${!msg.is_read ? 'font-bold text-studio-800 dark:text-studio-100' : 'text-studio-500 dark:text-studio-400'}`}>
+                <p
+                  className={`text-xs truncate ${
+                    !msg.is_read
+                      ? 'font-semibold text-slate-800 dark:text-slate-200'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
                   {msg.subject || '(Sin asunto)'}
                 </p>
 
-                <div className="flex items-center gap-3 text-[11px] text-studio-400 font-medium">
-                  <span>{msg.raw_size_kb} KB</span>
-                  {msg.has_attachments && (
-                    <span className="flex items-center gap-1 text-apple-blue dark:text-apple-blueDark">
-                      <Paperclip className="w-3 h-3" />
-                      <span>Adjunto</span>
-                    </span>
-                  )}
-                </div>
+                {msg.has_attachments && (
+                  <div className="flex items-center gap-1 text-[11px] text-cobalt-600 dark:text-cobalt-400 font-medium mt-1.5">
+                    <Paperclip className="w-3 h-3" />
+                    <span>Contiene archivos adjuntos</span>
+                  </div>
+                )}
               </div>
 
-              <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-apple-blue translate-x-1' : 'text-studio-300 dark:text-studio-600 group-hover:translate-x-1'}`} />
+              <ChevronRight
+                className={`w-4 h-4 shrink-0 transition-transform ${
+                  isSelected ? 'text-cobalt-600 translate-x-0.5' : 'text-slate-400'
+                }`}
+              />
             </button>
           );
         })}

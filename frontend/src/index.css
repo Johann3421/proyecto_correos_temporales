@@ -8,47 +8,16 @@
   }
 
   html {
-    @apply scroll-smooth;
+    @apply scroll-smooth antialiased;
   }
 
   body {
-    @apply bg-studio-50 dark:bg-studio-950 text-studio-900 dark:text-studio-100 font-sans antialiased selection:bg-apple-blue selection:text-white;
-    background-image: 
-      radial-gradient(at 15% 15%, rgba(0, 113, 227, 0.08) 0px, transparent 50%),
-      radial-gradient(at 85% 85%, rgba(48, 209, 88, 0.06) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(175, 82, 222, 0.04) 0px, transparent 60%);
-    background-attachment: fixed;
+    @apply bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150;
   }
 
-  .dark body {
-    background-image: 
-      radial-gradient(at 20% 10%, rgba(10, 132, 255, 0.12) 0px, transparent 50%),
-      radial-gradient(at 80% 80%, rgba(48, 209, 88, 0.08) 0px, transparent 50%),
-      radial-gradient(at 50% 40%, rgba(175, 82, 222, 0.05) 0px, transparent 60%);
-    background-attachment: fixed;
-  }
-}
-
-@layer components {
-  /* Apple Glassmorphism Surfaces */
-  .glass-panel {
-    @apply bg-white/70 dark:bg-studio-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/[0.08] shadow-glass dark:shadow-glass-dark;
-  }
-
-  .glass-card {
-    @apply bg-white/80 dark:bg-studio-900/70 backdrop-blur-xl border border-white/80 dark:border-white/[0.07] shadow-glass dark:shadow-glass-dark;
-  }
-
-  .glass-pill {
-    @apply bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-md border border-black/[0.06] dark:border-white/[0.08];
-  }
-
-  .glass-input {
-    @apply bg-white/60 dark:bg-studio-800/60 backdrop-blur-md border border-studio-200/80 dark:border-white/[0.08] focus:border-apple-blue dark:focus:border-apple-blueDark focus:ring-4 focus:ring-apple-blue/15 dark:focus:ring-apple-blueDark/20;
-  }
-
-  .glass-island {
-    @apply bg-white/85 dark:bg-studio-900/85 backdrop-blur-2xl border border-white/80 dark:border-white/[0.1] shadow-island;
+  /* Focus visible accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-cobalt-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
   }
 }
 
@@ -63,5 +32,5 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-studio-300/60 dark:bg-studio-700/60 rounded-full hover:bg-studio-400 dark:hover:bg-studio-600 transition-colors;
+  @apply bg-slate-300 dark:bg-slate-700 rounded hover:bg-slate-400 dark:hover:bg-slate-600;
 }
