@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import secrets
 
@@ -8,8 +8,8 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Active session in-memory store for active session tokens
-# token -> { "username": str, "expires_at": datetime }
+# Active session in-memory store
+# token -> { "username": str, "role": str, "expires_at": datetime }
 ACTIVE_SESSIONS: dict[str, dict] = {}
 
 class LoginRequest(BaseModel):
@@ -20,12 +20,14 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
+    role: str
     expires_at: datetime
     expires_in_seconds: int
 
 class VerifyResponse(BaseModel):
     valid: bool
     username: Optional[str] = None
+    role: Optional[str] = None
     remaining_seconds: int
 
 def clean_expired_sessions():
@@ -36,49 +38,53 @@ def clean_expired_sessions():
 
 @router.post("/login", response_model=LoginResponse)
 async def login(payload: LoginRequest):
-    """Authenticate with username and password. Default demo user: demo / demo1234 (lifespan: 1 hour)."""
+    """Authenticate with username and password (Supports demo / demo1234 and admin / admin1234)."""
     clean_expired_sessions()
     
-    # Check credentials
-    is_valid = (
-        payload.username.strip() == settings.DEMO_USER and
-        payload.password == settings.DEMO_PASSWORD
-    )
+    username = payload.username.strip().lower()
+    password = payload.password
     
-    # Also support admin / password if configured in env
-    if not is_valid and hasattr(settings, "ADMIN_USER"):
-        is_valid = (
-            payload.username.strip() == getattr(settings, "ADMIN_USER", "") and
-            payload.password == getattr(settings, "ADMIN_PASSWORD", "")
-        )
+    role = None
+    lifespan_minutes = settings.SESSION_LIFESPAN_MINUTES  # default 60 min
 
-    if not is_valid:
+    # Check admin
+    if username == settings.ADMIN_USER.lower() and password == settings.ADMIN_PASSWORD:
+        role = "admin"
+        lifespan_minutes = settings.ADMIN_SESSION_LIFESPAN_HOURS * 60
+    # Check demo
+    elif username == settings.DEMO_USER.lower() and password == settings.DEMO_PASSWORD:
+        role = "demo"
+        lifespan_minutes = settings.SESSION_LIFESPAN_MINUTES
+        
+    if not role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales incorrectas. Usa el usuario de prueba demo / demo1234."
+            detail="Credenciales incorrectas. Prueba con admin/admin1234 o demo/demo1234."
         )
 
-    # Generate 1-hour session token
+    # Generate session token
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=settings.SESSION_LIFESPAN_MINUTES)
+    expires_at = now + timedelta(minutes=lifespan_minutes)
     
     ACTIVE_SESSIONS[token] = {
-        "username": payload.username.strip(),
+        "username": username,
+        "role": role,
         "expires_at": expires_at
     }
 
     return LoginResponse(
         access_token=token,
         token_type="bearer",
-        username=payload.username.strip(),
+        username=username,
+        role=role,
         expires_at=expires_at,
         expires_in_seconds=int((expires_at - now).total_seconds())
     )
 
 @router.get("/verify/{token}", response_model=VerifyResponse)
 async def verify_session(token: str):
-    """Verify if the session token is valid and unexpired."""
+    """Verify if session token is valid."""
     clean_expired_sessions()
     session = ACTIVE_SESSIONS.get(token)
     if not session:
@@ -93,6 +99,7 @@ async def verify_session(token: str):
     return VerifyResponse(
         valid=True,
         username=session["username"],
+        role=session.get("role", "user"),
         remaining_seconds=max(0, diff)
     )
 

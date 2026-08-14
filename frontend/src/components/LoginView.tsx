@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, KeyRound, AlertCircle, Clock, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, KeyRound, AlertCircle, Clock, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { api, LoginResponse } from '../services/api';
 
 interface LoginViewProps {
@@ -42,6 +42,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setError(null);
   };
 
+  const handleFillAdmin = () => {
+    setUsername('admin');
+    setPassword('admin1234');
+    setError(null);
+  };
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 sm:p-8 shadow-sm">
@@ -54,41 +60,51 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             Acceso a TempMail
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Generador de correos temporales con dominio seguro
+            Generador con subdominios dinámicos y protección anti-spam
           </p>
         </div>
 
-        {/* Demo User Share Card */}
-        <div className="mb-6 p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs">
-          <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Usuario de prueba para compartir</span>
+        {/* Quick Credentials Cards */}
+        <div className="mb-6 space-y-2.5">
+          {/* Demo User Card */}
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Usuario Demo (1 hora)</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleFillDemo}
+                className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-colors"
+              >
+                Autocompletar
+              </button>
             </div>
-            <span className="flex items-center gap-1 text-[11px] font-mono text-slate-500">
-              <Clock className="w-3 h-3 text-cobalt-600" />
-              <span>1 hora activa</span>
-            </span>
+            <p className="text-[11px] font-mono text-slate-500">
+              demo / demo1234
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 font-mono text-[11px] mb-2.5">
-            <div>
-              <span className="text-slate-400">Usuario: </span>
-              <span className="font-bold text-slate-900 dark:text-slate-100">demo</span>
+          {/* Admin User Card */}
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                <ShieldAlert className="w-4 h-4 text-cobalt-600" />
+                <span>Administrador (24 horas)</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleFillAdmin}
+                className="px-2 py-0.5 rounded text-[11px] font-semibold bg-cobalt-100 dark:bg-cobalt-950/60 text-cobalt-700 dark:text-cobalt-300 hover:bg-cobalt-200 transition-colors"
+              >
+                Autocompletar
+              </button>
             </div>
-            <div>
-              <span className="text-slate-400">Clave: </span>
-              <span className="font-bold text-slate-900 dark:text-slate-100">demo1234</span>
-            </div>
+            <p className="text-[11px] font-mono text-slate-500">
+              admin / admin1234
+            </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="w-full py-1.5 rounded text-xs font-semibold bg-cobalt-50 dark:bg-cobalt-950/50 text-cobalt-700 dark:text-cobalt-300 border border-cobalt-200 dark:border-cobalt-800 hover:bg-cobalt-100 dark:hover:bg-cobalt-900 transition-colors"
-          >
-            Autocompletar credenciales de prueba
-          </button>
         </div>
 
         {/* Error Alert */}
@@ -111,7 +127,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="demo"
+                placeholder="demo o admin"
                 className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-cobalt-600"
                 required
               />

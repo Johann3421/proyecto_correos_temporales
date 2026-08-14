@@ -23,11 +23,14 @@ class Settings(BaseSettings):
     DEFAULT_EXPIRATION_MINUTES: int = 10
     CLEANUP_INTERVAL_MINUTES: int = 5
     
-    # Authentication & Test User
+    # Authentication (Demo User & Admin User)
     AUTH_ENABLED: bool = os.getenv("AUTH_ENABLED", "true").lower() in ("true", "1", "yes")
     DEMO_USER: str = os.getenv("DEMO_USER", "demo")
     DEMO_PASSWORD: str = os.getenv("DEMO_PASSWORD", "demo1234")
-    SESSION_LIFESPAN_MINUTES: int = int(os.getenv("SESSION_LIFESPAN_MINUTES", "60"))  # 1 hour
+    ADMIN_USER: str = os.getenv("ADMIN_USER", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin1234")
+    SESSION_LIFESPAN_MINUTES: int = int(os.getenv("SESSION_LIFESPAN_MINUTES", "60"))  # 1 hour for demo
+    ADMIN_SESSION_LIFESPAN_HOURS: int = int(os.getenv("ADMIN_SESSION_LIFESPAN_HOURS", "24"))  # 24 hours for admin
     SECRET_KEY: str = os.getenv("SECRET_KEY", "abadgroup_secure_jwt_token_auth_key_2026")
     
     # SMTP Server Settings
