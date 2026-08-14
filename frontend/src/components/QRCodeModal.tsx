@@ -19,44 +19,52 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, emailAddress, 
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-sm p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl text-center">
-        {/* Close Button */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-950/55 backdrop-blur-sm animate-fade-in"
+      onClick={handleOverlayClick}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-sm p-6 bg-paper-50 dark:bg-ink-900 rounded-2xl border border-stone-200 dark:border-ink-800 shadow-lift animate-scale-in">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-lg hover:bg-stone-100 dark:hover:bg-ink-800 text-stone-500 hover:text-ink-900 dark:hover:text-paper-50 transition-colors"
           aria-label="Cerrar"
         >
-          <X className="w-4 h-4" />
+          <X className="h-4 w-4" />
         </button>
 
-        {/* Header */}
-        <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-cobalt-50 dark:bg-cobalt-950/40 text-cobalt-600 flex items-center justify-center">
-          <Smartphone className="w-5 h-5" />
+        <div className="text-center mb-5">
+          <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-xl bg-clay-50 dark:bg-clay-950/40 text-clay-600 dark:text-clay-400">
+            <Smartphone className="h-5 w-5" />
+          </div>
+          <h3 className="font-serif text-lg font-semibold text-ink-900 dark:text-paper-50">
+            Escanear en el móvil
+          </h3>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+            Apunta con la cámara para copiar esta dirección.
+          </p>
         </div>
 
-        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
-          Escanear en dispositivo móvil
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-          Apunta con la cámara de tu teléfono para abrir o copiar esta dirección.
-        </p>
-
-        {/* QR Code Container */}
-        <div className="p-3 bg-white rounded-lg border border-slate-200 inline-block mx-auto mb-4">
-          <QRCodeSVG value={emailAddress} size={160} level="M" includeMargin={true} />
+        <div className="mx-auto mb-5 w-fit p-3 bg-white dark:bg-ink-950 rounded-xl border border-stone-200 dark:border-ink-800">
+          <QRCodeSVG value={emailAddress} size={168} level="M" includeMargin={true} />
         </div>
 
-        {/* Email Address Pill */}
-        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-mono">
-          <span className="truncate text-slate-800 dark:text-slate-200">{emailAddress}</span>
+        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-paper-100 dark:bg-ink-950 border border-stone-200 dark:border-ink-800 text-xs font-mono">
+          <span className="truncate text-ink-800 dark:text-paper-100">{emailAddress}</span>
           <button
             onClick={handleCopy}
-            className="p-1 rounded bg-cobalt-600 text-white hover:bg-cobalt-700 transition-colors shrink-0"
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors ${
+              copied ? 'bg-olive-600 text-white' : 'bg-clay-600 text-paper-50 hover:bg-clay-700'
+            }`}
             title="Copiar"
           >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>

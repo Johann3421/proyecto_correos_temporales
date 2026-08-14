@@ -34,7 +34,7 @@ export function useInbox() {
         setInbox(data);
         setMessages([]);
         localStorage.setItem(STORAGE_KEY, data.access_token);
-        triggerToast('¡Nuevo correo generado!');
+        triggerToast('Nuevo correo generado');
       } catch {
         setError('Error al generar la bandeja de entrada');
       } finally {
@@ -94,7 +94,7 @@ export function useInbox() {
       const newMsg: MessageSummary = payload.message;
       setMessages((prev) => [newMsg, ...prev.filter((m) => m.id !== newMsg.id)]);
       playNotificationSound();
-      triggerToast('📬 ¡Tienes un mensaje nuevo!');
+      triggerToast('Has recibido un mensaje nuevo');
     }
   }, [triggerToast]);
 
@@ -113,7 +113,7 @@ export function useInbox() {
         if (!prev) return null;
         const newSecs = prev.remaining_seconds - 1;
         if (newSecs <= 0) {
-          triggerToast('⚠️ Tu correo ha expirado');
+          triggerToast('Tu correo ha expirado');
           return { ...prev, remaining_seconds: 0, is_active: false };
         }
         return { ...prev, remaining_seconds: newSecs };

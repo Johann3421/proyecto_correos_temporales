@@ -12,25 +12,80 @@
   }
 
   body {
-    @apply bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150;
+    @apply bg-paper-100 dark:bg-ink-950 text-ink-900 dark:text-paper-100 font-sans;
+    @apply transition-colors duration-200 ease-out-expo;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Focus visible accessibility */
+  /* Warm focus ring */
   *:focus-visible {
-    @apply outline-none ring-2 ring-cobalt-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
+    @apply outline-none ring-2 ring-clay-500 ring-offset-2 ring-offset-paper-100 dark:ring-offset-ink-950;
+  }
+
+  ::selection {
+    @apply bg-clay-200 dark:bg-clay-800 text-ink-900 dark:text-paper-50;
+  }
+
+  /* Refined scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-stone-300 dark:bg-ink-800 rounded-full border-2 border-paper-100 dark:border-ink-950;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-stone-400 dark:bg-ink-700;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.stone.300') transparent;
+  }
+  .dark * {
+    scrollbar-color: theme('colors.ink.800') transparent;
   }
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@layer components {
+  /* Rendered email body — readable without the typography plugin */
+  .email-body {
+    @apply text-ink-700 dark:text-stone-200 text-sm leading-relaxed;
+  }
+  .email-body p { @apply mb-3; }
+  .email-body a {
+    @apply text-clay-600 dark:text-clay-400 underline underline-offset-2 hover:text-clay-700 dark:hover:text-clay-300;
+  }
+  .email-body h1, .email-body h2, .email-body h3, .email-body h4 {
+    @apply font-semibold text-ink-900 dark:text-paper-50 mt-5 mb-2 leading-snug;
+  }
+  .email-body h1 { @apply text-xl; }
+  .email-body h2 { @apply text-lg; }
+  .email-body h3 { @apply text-base; }
+  .email-body ul, .email-body ol { @apply pl-5 mb-3; }
+  .email-body li { @apply mb-1; }
+  .email-body img { @apply max-w-full rounded-lg my-3; }
+  .email-body blockquote {
+    @apply border-l-2 border-stone-300 dark:border-ink-700 pl-3 italic text-ink-500 dark:text-stone-400 my-3;
+  }
+  .email-body pre {
+    @apply bg-paper-100 dark:bg-ink-950 border border-stone-200 dark:border-ink-800 rounded-lg p-3 overflow-x-auto text-xs;
+  }
+  .email-body table { @apply w-full text-xs border-collapse my-3; }
+  .email-body th, .email-body td {
+    @apply border border-stone-200 dark:border-ink-800 px-2 py-1 text-left;
+  }
+  .email-body hr { @apply border-stone-200 dark:border-ink-800 my-4; }
+
+  /* Thin hairline used across the app */
+  .hairline { @apply border-stone-200 dark:border-ink-800; }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 dark:bg-slate-700 rounded hover:bg-slate-400 dark:hover:bg-slate-600;
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
 }

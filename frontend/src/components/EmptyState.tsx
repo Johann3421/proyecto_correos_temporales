@@ -1,30 +1,26 @@
 import React from 'react';
-import { Mail, Radio, Info } from 'lucide-react';
+import { Mail, Radio } from 'lucide-react';
 
 export const EmptyState: React.FC = () => {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-xl p-10 text-center flex flex-col items-center justify-center min-h-[300px]">
-      <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center mb-4">
-        <Mail className="w-6 h-6" />
+    <div className="rounded-2xl border border-dashed border-stone-300 dark:border-ink-700 bg-paper-50/70 dark:bg-ink-900/50 p-12 text-center flex flex-col items-center justify-center min-h-[320px]">
+      <div className="relative grid h-16 w-16 place-items-center rounded-2xl bg-clay-50 dark:bg-clay-950/40 text-clay-600 dark:text-clay-400 mb-5">
+        <span className="absolute inset-0 rounded-2xl bg-clay-100 dark:bg-clay-900/30 animate-pulse-soft" />
+        <Mail className="h-7 w-7 relative" />
       </div>
 
-      <div className="flex items-center justify-center gap-2 text-cobalt-600 dark:text-cobalt-400 font-bold text-xs uppercase tracking-wider mb-2">
-        <Radio className="w-3.5 h-3.5 animate-pulse" />
-        <span>Bandeja lista y esperando</span>
+      <div className="flex items-center justify-center gap-2 text-clay-600 dark:text-clay-400 font-semibold text-xs uppercase tracking-wider mb-2">
+        <Radio className="h-3.5 w-3.5 animate-pulse-soft" />
+        <span>Esperando correos</span>
       </div>
 
-      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-2">
-        No has recibido ningún mensaje aún
+      <h3 className="font-serif text-lg font-semibold text-ink-900 dark:text-paper-50 mb-2">
+        Tu bandeja está lista
       </h3>
 
-      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-5 leading-relaxed">
-        Copia la dirección de correo temporal superior y úsala en el servicio donde deseas registrarte o recibir información. Los correos entrantes se mostrarán automáticamente.
+      <p className="text-sm text-stone-500 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
+        Copia la dirección de arriba y úsala donde necesites. Los mensajes aparecerán aquí automáticamente, en tiempo real.
       </p>
-
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
-        <Info className="w-3.5 h-3.5 text-cobalt-600 dark:text-cobalt-400 shrink-0" />
-        <span>Recepción en vivo activa mediante WebSockets</span>
-      </div>
     </div>
   );
 };
