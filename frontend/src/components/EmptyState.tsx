@@ -1,6 +1,4 @@
-import React from 'react';
-import { clsx } from 'clsx';
-import { Mail, Radio, ArrowDownTray } from 'lucide-react';
+import { Mail, Radio, ArrowDownToLine } from 'lucide-react';
 
 export const EmptyState: React.FC = () => {
   return (
@@ -26,7 +24,7 @@ export const EmptyState: React.FC = () => {
       </p>
 
       <div className="flex items-center justify-center gap-3 p-4 rounded-xl bg-charcoal-50 dark:bg-ink-800 border border-charcoal-200 dark:border-ink-800 max-w-md">
-        <ArrowDownTray className="w-5 h-5 text-sage-600 dark:text-sage-400 shrink-0" aria-hidden="true" />
+        <ArrowDownToLine className="w-5 h-5 text-sage-600 dark:text-sage-400 shrink-0" aria-hidden="true" />
         <span className="text-body-sm text-charcoal-700 dark:text-charcoal-300">
           Los nuevos correos llegarán instantáneamente
         </span>
