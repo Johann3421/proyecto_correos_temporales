@@ -26,14 +26,28 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-tempmail}
       - DOMAINS=${DOMAINS:-correos.abadgroup.tech}
+      - ENABLE_RANDOM_SUBDOMAINS=${ENABLE_RANDOM_SUBDOMAINS:-true}
       - SMTP_HOST=0.0.0.0
       - SMTP_PORT=2525
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - DEMO_USER=${DEMO_USER:-demo}
+      - DEMO_PASSWORD=${DEMO_PASSWORD:-demo1234}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin1234}
+      - SESSION_LIFESPAN_MINUTES=${SESSION_LIFESPAN_MINUTES:-60}
+      - ADMIN_SESSION_LIFESPAN_HOURS=${ADMIN_SESSION_LIFESPAN_HOURS:-24}
     ports:
       - "${BACKEND_PORT:-8012}:8000"
       - "${SMTP_PORT:-2512}:2525"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
   frontend:
     build:
@@ -44,7 +58,8 @@ services:
     ports:
       - "${FRONTEND_PORT:-3012}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
