@@ -156,8 +156,9 @@ export default {
         'slow': '400ms',
       },
       transitionTimingFunction: {
-        'ease-out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
-        'ease-in-expo': 'cubic-bezier(0.7, 0, 0.84, 0)',
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'in-expo': 'cubic-bezier(0.7, 0, 0.84, 0)',
+        'out-back': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
     },
   },
