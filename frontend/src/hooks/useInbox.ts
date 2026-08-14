@@ -12,10 +12,16 @@ export function useInbox() {
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const domainsReadyRef = useRef(false);
   const initStartedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+
+  const triggerToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  }, []);
 
   // Create new inbox
   const generateNewInbox = useCallback(
@@ -28,13 +34,14 @@ export function useInbox() {
         setInbox(data);
         setMessages([]);
         localStorage.setItem(STORAGE_KEY, data.access_token);
+        triggerToast('¡Nuevo correo generado!');
       } catch {
         setError('Error al generar la bandeja de entrada');
       } finally {
         setIsLoading(false);
       }
     },
-    [selectedDomain],
+    [selectedDomain, triggerToast],
   );
 
   // Step 1: Fetch available domains
@@ -87,10 +94,9 @@ export function useInbox() {
       const newMsg: MessageSummary = payload.message;
       setMessages((prev) => [newMsg, ...prev.filter((m) => m.id !== newMsg.id)]);
       playNotificationSound();
-      // Toast will be handled by App component via custom event
-      window.dispatchEvent(new CustomEvent('new-message', { detail: newMsg }));
+      triggerToast('📬 ¡Tienes un mensaje nuevo!');
     }
-  }, []);
+  }, [triggerToast]);
 
   const { isConnected } = useWebSocket({
     token: inbox ? inbox.access_token : null,
@@ -107,7 +113,7 @@ export function useInbox() {
         if (!prev) return null;
         const newSecs = prev.remaining_seconds - 1;
         if (newSecs <= 0) {
-          window.dispatchEvent(new CustomEvent('inbox-expired'));
+          triggerToast('⚠️ Tu correo ha expirado');
           return { ...prev, remaining_seconds: 0, is_active: false };
         }
         return { ...prev, remaining_seconds: newSecs };
@@ -117,17 +123,18 @@ export function useInbox() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [inbox?.access_token, inbox?.expires_at]);
+  }, [inbox?.access_token, inbox?.expires_at, triggerToast]);
 
   const refreshMessages = useCallback(async () => {
     if (!inbox) return;
     try {
       const msgs = await api.getMessages(inbox.access_token);
       setMessages(msgs);
+      triggerToast('Bandeja actualizada');
     } catch {
       // ignore
     }
-  }, [inbox]);
+  }, [inbox, triggerToast]);
 
   const extendTime = useCallback(
     async (minutes: number = 10) => {
@@ -135,12 +142,12 @@ export function useInbox() {
       try {
         const updated = await api.extendInbox(inbox.access_token, minutes);
         setInbox(updated);
+        triggerToast(`Tiempo extendido (+${minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`})`);
       } catch {
-        // Error will be handled by caller
-        throw new Error('No se pudo extender el tiempo');
+        triggerToast('No se pudo extender el tiempo');
       }
     },
-    [inbox],
+    [inbox, triggerToast],
   );
 
   const deleteInbox = useCallback(async () => {
@@ -150,10 +157,11 @@ export function useInbox() {
       localStorage.removeItem(STORAGE_KEY);
       initStartedRef.current = false;
       await generateNewInbox(selectedDomain);
+      triggerToast('Bandeja eliminada');
     } catch {
-      throw new Error('Error al eliminar bandeja');
+      triggerToast('Error al eliminar bandeja');
     }
-  }, [inbox, selectedDomain, generateNewInbox]);
+  }, [inbox, selectedDomain, generateNewInbox, triggerToast]);
 
   return {
     inbox,
@@ -163,6 +171,7 @@ export function useInbox() {
     setSelectedDomain,
     isLoading,
     error,
+    toastMessage,
     isConnected,
     generateNewInbox,
     refreshMessages,
