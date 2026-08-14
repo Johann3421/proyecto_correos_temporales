@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import inbox, websocket
+from app.api import inbox, websocket, auth
 from app.services.smtp_server import start_smtp_server
 from app.services.cleanup import start_cleanup_scheduler
 
@@ -55,6 +55,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(inbox.router, prefix=settings.API_PREFIX)
+app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(websocket.router)
 
 @app.get("/health")

@@ -36,7 +36,40 @@ export interface MessageDetail extends MessageSummary {
   attachments: AttachmentSummary[];
 }
 
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  username: string;
+  expires_at: string;
+  expires_in_seconds: number;
+}
+
+export interface VerifyResponse {
+  valid: boolean;
+  username?: string;
+  remaining_seconds: number;
+}
+
 export const api = {
+  // Authentication
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const res = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/login`, {
+      username,
+      password,
+    });
+    return res.data;
+  },
+
+  async verifySession(token: string): Promise<VerifyResponse> {
+    const res = await axios.get<VerifyResponse>(`${API_BASE_URL}/auth/verify/${token}`);
+    return res.data;
+  },
+
+  async logout(token: string): Promise<void> {
+    await axios.post(`${API_BASE_URL}/auth/logout/${token}`);
+  },
+
+  // Inbox operations
   async getDomains(): Promise<string[]> {
     const res = await axios.get<{ domains: string[] }>(`${API_BASE_URL}/inbox/domains`);
     return res.data.domains;
@@ -45,7 +78,7 @@ export const api = {
   async createInbox(domain?: string, customPrefix?: string): Promise<InboxData> {
     const res = await axios.post<InboxData>(`${API_BASE_URL}/inbox`, {
       domain,
-      custom_prefix: customPrefix
+      custom_prefix: customPrefix,
     });
     return res.data;
   },
@@ -76,5 +109,5 @@ export const api = {
 
   getAttachmentUrl(token: string, attachmentId: string): string {
     return `${API_BASE_URL}/inbox/${token}/attachments/${attachmentId}`;
-  }
+  },
 };
