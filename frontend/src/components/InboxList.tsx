@@ -1,5 +1,6 @@
 import React from 'react';
-import { Mail, Paperclip, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
+import { clsx } from 'clsx';
+import { Mail, Paperclip, ChevronRight } from 'lucide-react';
 import { MessageSummary } from '../services/api';
 import { formatTimeAgo } from '../utils/formatters';
 
@@ -12,25 +13,27 @@ interface InboxListProps {
 export const InboxList: React.FC<InboxListProps> = ({
   messages,
   selectedMessageId,
-  onSelectMessage
+  onSelectMessage,
 }) => {
+  if (messages.length === 0) return null;
+
   return (
-    <div className="w-full bg-white dark:bg-obsidian-850 rounded-3xl border border-slate-200 dark:border-obsidian-700/80 overflow-hidden shadow-xl shadow-obsidian-950/5">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-obsidian-750 flex items-center justify-between bg-slate-50/50 dark:bg-obsidian-900/40">
-        <div className="flex items-center gap-2.5">
-          <InboxIcon className="w-5 h-5 text-brand-500" />
-          <h2 className="font-bold text-base text-slate-900 dark:text-white">
-            Bandeja de Entrada
-          </h2>
+    <div className="rounded-2xl border border-charcoal-200 dark:border-ink-800 bg-white dark:bg-ink-900 shadow-soft dark:shadow-medium overflow-hidden animate-slide-up">
+      <div className="p-4 sm:p-5 border-b border-charcoal-200 dark:border-ink-800 bg-charcoal-50/50 dark:bg-ink-800/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Mail className="w-5 h-5 text-sage-600 dark:text-sage-400" aria-hidden="true" />
+            <h2 className="text-heading-sm text-charcoal-900 dark:text-charcoal-100">
+              Bandeja de entrada
+            </h2>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-charcoal-100 dark:bg-ink-800 text-charcoal-600 dark:text-charcoal-300 text-caption font-medium">
+            {messages.length} {messages.length === 1 ? 'mensaje' : 'mensajes'}
+          </span>
         </div>
-        <span className="px-2.5 py-1 rounded-full bg-slate-200 dark:bg-obsidian-750 text-slate-700 dark:text-slate-300 text-xs font-bold">
-          {messages.length} {messages.length === 1 ? 'mensaje' : 'mensajes'}
-        </span>
       </div>
 
-      {/* List */}
-      <div className="divide-y divide-slate-100 dark:divide-obsidian-750 max-h-[500px] overflow-y-auto">
+      <div className="divide-y divide-charcoal-200 dark:divide-ink-800 max-h-[500px] overflow-y-auto">
         {messages.map((msg) => {
           const isSelected = msg.id === selectedMessageId;
 
@@ -38,45 +41,57 @@ export const InboxList: React.FC<InboxListProps> = ({
             <button
               key={msg.id}
               onClick={() => onSelectMessage(msg.id)}
-              className={`w-full text-left p-4 sm:p-5 transition-all flex items-start justify-between gap-3 group relative ${
+              className={clsx(
+                'w-full text-left p-4 sm:p-5 transition-all flex items-start justify-between gap-3 group relative',
                 isSelected
-                  ? 'bg-brand-500/10 dark:bg-brand-500/15 border-l-4 border-l-brand-500'
-                  : 'hover:bg-slate-50 dark:hover:bg-obsidian-800/60'
-              }`}
+                  ? 'bg-sage-50 dark:bg-sage-900/20 border-l-4 border-l-sage-500'
+                  : 'hover:bg-charcoal-50 dark:hover:bg-ink-800/50'
+              )}
             >
-              {/* Unread blue/green indicator dot */}
               <div className="pt-1 shrink-0">
                 {!msg.is_read ? (
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-500 block shadow-sm shadow-brand-500/50" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-sage-500 block shadow-sm shadow-sage-500/30" aria-label="No leído" />
                 ) : (
-                  <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <Mail className="w-4 h-4 text-charcoal-400 dark:text-charcoal-500" aria-hidden="true" />
                 )}
               </div>
 
-              {/* Subject & Sender Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className={`text-sm truncate ${!msg.is_read ? 'font-extrabold text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>
+                  <span className={clsx(
+                    'text-body-sm truncate',
+                    !msg.is_read
+                      ? 'font-bold text-charcoal-900 dark:text-charcoal-100'
+                      : 'font-medium text-charcoal-700 dark:text-charcoal-300'
+                  )}>
                     {msg.from_address}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0 font-medium">
+                  <span className="text-caption text-charcoal-400 dark:text-charcoal-500 shrink-0 font-medium">
                     {formatTimeAgo(msg.received_at)}
                   </span>
                 </div>
 
-                <p className={`text-xs truncate ${!msg.is_read ? 'font-bold text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={clsx(
+                  'text-caption truncate',
+                  !msg.is_read
+                    ? 'font-semibold text-charcoal-800 dark:text-charcoal-200'
+                    : 'text-charcoal-500 dark:text-charcoal-400'
+                )}>
                   {msg.subject || '(Sin asunto)'}
                 </p>
 
                 {msg.has_attachments && (
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1.5">
-                    <Paperclip className="w-3 h-3 text-brand-500" />
-                    <span>Contiene archivos adjuntos</span>
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-charcoal-400 dark:text-charcoal-500 mt-1.5">
+                    <Paperclip className="w-3 h-3 text-sage-500" aria-hidden="true" />
+                    <span>Adjuntos</span>
                   </div>
                 )}
               </div>
 
-              <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-brand-500 translate-x-0.5' : 'text-slate-300 dark:text-slate-600 group-hover:translate-x-0.5'}`} />
+              <ChevronRight className={clsx(
+                'w-4 h-4 shrink-0 transition-transform',
+                isSelected ? 'text-sage-500 translate-x-0.5' : 'text-charcoal-300 dark:text-charcoal-600 group-hover:translate-x-0.5'
+              )} aria-hidden="true" />
             </button>
           );
         })}

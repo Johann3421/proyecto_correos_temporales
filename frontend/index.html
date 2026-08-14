@@ -2,17 +2,21 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>������</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AirInbox — Correos Temporales Instantáneos</title>
-    <meta name="description" content="Genera tu dirección de correo temporal en 1 segundo sin registro. Recibe mensajes en tiempo real con privacidad total." />
+    <title>TempMail — Correo temporal sin complicaciones</title>
+    <meta name="description" content="Genera una dirección de correo temporal en segundos. Sin registro, sin rastros, privacidad total." />
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts - Inter for UI, JetBrains Mono for code, Plus Jakarta Sans for display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Preload critical fonts -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/jetbrainsmono/v23/tDbD2o-flEEny0FZhsf21G1PDIRJYQ.woff2">
   </head>
-  <body class="bg-slate-50 dark:bg-obsidian-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans antialiased selection:bg-brand-500 selection:text-white">
+  <body class="bg-clay-50 dark:bg-ink-950 text-charcoal-900 dark:text-charcoal-100 min-h-screen font-sans antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

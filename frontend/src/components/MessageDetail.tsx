@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Paperclip, Download, ShieldCheck, FileText, Code } from 'lucide-react';
+import { clsx } from 'clsx';
+import { ArrowLeft, Paperclip, Download, FileText, Code, Copy, Check } from 'lucide-react';
 import { MessageDetail as IMessageDetail, api } from '../services/api';
 import { sanitizeHtmlContent } from '../utils/sanitize';
 import { formatFileSize } from '../utils/formatters';
@@ -15,16 +16,17 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
   token,
   message,
   isLoading,
-  onBack
+  onBack,
 }) => {
   const [activeTab, setActiveTab] = useState<'html' | 'text'>('html');
+  const [copiedAttachment, setCopiedAttachment] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <div className="p-8 bg-white dark:bg-obsidian-850 rounded-3xl border border-slate-200 dark:border-obsidian-700 animate-pulse space-y-4">
-        <div className="h-6 bg-slate-200 dark:bg-obsidian-750 rounded w-1/4" />
-        <div className="h-8 bg-slate-200 dark:bg-obsidian-750 rounded w-3/4" />
-        <div className="h-40 bg-slate-100 dark:bg-obsidian-900 rounded-2xl" />
+      <div className="rounded-2xl border border-charcoal-200 dark:border-ink-800 bg-white dark:bg-ink-900 shadow-soft dark:shadow-medium animate-pulse p-8 space-y-4">
+        <div className="h-6 bg-charcoal-200 dark:bg-ink-700 rounded w-1/4" />
+        <div className="h-8 bg-charcoal-200 dark:bg-ink-700 rounded w-3/4" />
+        <div className="h-48 bg-charcoal-100 dark:bg-ink-800 rounded-xl" />
       </div>
     );
   }
@@ -35,93 +37,97 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
   const showHtmlTab = Boolean(sanitizedHtml.trim());
 
   return (
-    <div className="bg-white dark:bg-obsidian-850 rounded-3xl border border-slate-200 dark:border-obsidian-700/80 overflow-hidden shadow-xl shadow-obsidian-950/5 animate-fade-in">
-      {/* Header Bar */}
-      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-obsidian-750 bg-slate-50/50 dark:bg-obsidian-900/40">
+    <div className="rounded-2xl border border-charcoal-200 dark:border-ink-800 bg-white dark:bg-ink-900 shadow-soft dark:shadow-medium overflow-hidden animate-slide-up">
+      <div className="p-4 sm:p-6 border-b border-charcoal-200 dark:border-ink-800 bg-charcoal-50/50 dark:bg-ink-800/50">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand-500 transition-colors mb-4"
+          className="btn-ghost btn-sm mb-4 flex items-center gap-1.5"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Volver a la lista</span>
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          <span>Volver</span>
         </button>
 
-        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mb-3">
+        <h2 className="text-heading-lg text-charcoal-900 dark:text-charcoal-100 mb-4 text-balance">
           {message.subject || '(Sin asunto)'}
         </h2>
 
-        {/* Sender metadata info card */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-slate-100/70 dark:bg-obsidian-800/70 border border-slate-200/70 dark:border-obsidian-700/50 text-xs">
-          <div>
-            <span className="text-slate-400 dark:text-slate-500 font-medium">De: </span>
-            <span className="font-bold text-slate-900 dark:text-slate-100">{message.from_address}</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-charcoal-50 dark:bg-ink-800 border border-charcoal-200 dark:border-ink-800 text-caption">
+          <div className="flex items-center gap-2">
+            <span className="text-charcoal-500 dark:text-charcoal-400 font-medium">De:</span>
+            <span className="font-semibold text-charcoal-900 dark:text-charcoal-100 break-all">{message.from_address}</span>
           </div>
 
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
-            <span>{new Date(message.received_at).toLocaleString("es-ES")}</span>
-            <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-obsidian-700 text-slate-700 dark:text-slate-300 font-mono text-[10px]">
+          <div className="flex items-center gap-3 text-charcoal-500 dark:text-charcoal-400 font-medium">
+            <span>{new Date(message.received_at).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+            <span className="px-2 py-0.5 rounded bg-charcoal-100 dark:bg-ink-700 text-charcoal-600 dark:text-charcoal-300 font-mono text-[10px]">
               {message.raw_size_kb} KB
             </span>
           </div>
         </div>
       </div>
 
-      {/* View Tabs & Content */}
       <div className="p-4 sm:p-6">
-        {/* Tab Selection if both HTML and Text exist */}
         {showHtmlTab && message.body_text && (
-          <div className="flex items-center gap-2 mb-4 border-b border-slate-200 dark:border-obsidian-750 pb-3">
+          <div className="flex gap-2 mb-4 border-b border-charcoal-200 dark:border-ink-800 pb-3">
             <button
               onClick={() => setActiveTab('html')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={clsx(
+                'btn-sm transition-all',
                 activeTab === 'html'
-                  ? 'bg-brand-500 text-obsidian-950 shadow-md shadow-brand-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-obsidian-800'
-              }`}
+                  ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 border border-sage-200 dark:border-sage-800'
+                  : 'text-charcoal-600 dark:text-charcoal-400 hover:bg-charcoal-100 dark:hover:bg-ink-800'
+              )}
             >
-              <Code className="w-3.5 h-3.5" />
-              <span>Formato HTML</span>
+              <Code className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>HTML</span>
             </button>
 
             <button
               onClick={() => setActiveTab('text')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={clsx(
+                'btn-sm transition-all',
                 activeTab === 'text'
-                  ? 'bg-brand-500 text-obsidian-950 shadow-md shadow-brand-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-obsidian-800'
-              }`}
+                  ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 border border-sage-200 dark:border-sage-800'
+                  : 'text-charcoal-600 dark:text-charcoal-400 hover:bg-charcoal-100 dark:hover:bg-ink-800'
+              )}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Texto Plano</span>
+              <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Texto</span>
             </button>
           </div>
         )}
 
-        {/* Email Body Renderer */}
-        <div className="min-h-[220px] rounded-2xl p-4 sm:p-6 bg-slate-50/50 dark:bg-obsidian-900/50 border border-slate-200/60 dark:border-obsidian-750">
+        <div className="min-h-[280px] rounded-xl p-4 sm:p-6 bg-charcoal-50 dark:bg-ink-800 border border-charcoal-200 dark:border-ink-800">
           {activeTab === 'html' && showHtmlTab ? (
             <div
-              className="prose dark:prose-invert max-w-none text-sm text-slate-800 dark:text-slate-200 overflow-x-auto"
+              className="prose dark:prose-invert max-w-none text-body-sm text-charcoal-800 dark:text-charcoal-200 overflow-x-auto"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           ) : (
-            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+            <pre className="whitespace-pre-wrap font-sans text-body-sm text-charcoal-800 dark:text-charcoal-200 leading-relaxed font-mono">
               {message.body_text || message.body_html || '(Mensaje sin contenido)'}
             </pre>
           )}
         </div>
 
-        {/* Attachments Section */}
         {message.attachments && message.attachments.length > 0 && (
-          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-obsidian-750">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
-              <Paperclip className="w-4 h-4 text-brand-500" />
-              <span>Archivos Adjuntos ({message.attachments.length})</span>
+          <div className="mt-6 pt-6 border-t border-charcoal-200 dark:border-ink-800">
+            <h4 className="text-overline text-charcoal-500 dark:text-charcoal-400 mb-3 flex items-center gap-1.5">
+              <Paperclip className="w-4 h-4 text-sage-600 dark:text-sage-400" aria-hidden="true" />
+              <span>Archivos adjuntos ({message.attachments.length})</span>
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {message.attachments.map((att) => {
                 const downloadUrl = api.getAttachmentUrl(token, att.id);
+                const isCopied = copiedAttachment === att.id;
+
+                const handleCopyUrl = (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  navigator.clipboard.writeText(downloadUrl);
+                  setCopiedAttachment(att.id);
+                  setTimeout(() => setCopiedAttachment(null), 2000);
+                };
 
                 return (
                   <a
@@ -129,24 +135,47 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
                     href={downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-100 dark:bg-obsidian-800 border border-slate-200 dark:border-obsidian-700 hover:border-brand-500/50 transition-all group"
+                    className="flex items-center justify-between p-4 rounded-xl bg-charcoal-50 dark:bg-ink-800 border border-charcoal-200 dark:border-ink-800 hover:border-sage-300 dark:hover:border-sage-700 transition-all group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
-                        <FileText className="w-4 h-4" />
+                      <div className="w-10 h-10 rounded-xl bg-sage-100 dark:bg-sage-900/30 text-sage-600 dark:text-sage-400 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        <p className="text-body-sm font-medium text-charcoal-900 dark:text-charcoal-100 truncate">
                           {att.filename}
                         </p>
-                        <p className="text-[11px] text-slate-400 font-mono">
+                        <p className="text-caption text-charcoal-500 dark:text-charcoal-400 font-mono">
                           {formatFileSize(att.size_bytes)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-2 rounded-xl bg-white dark:bg-obsidian-700 text-slate-600 dark:text-slate-300 group-hover:bg-brand-500 group-hover:text-obsidian-950 transition-colors">
-                      <Download className="w-4 h-4" />
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={handleCopyUrl}
+                        className={clsx(
+                          'btn-ghost btn-icon p-2 rounded-lg transition-colors',
+                          isCopied ? 'bg-success-light dark:bg-success-dark/20 text-success-DEFAULT' : 'text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-300'
+                        )}
+                        title={isCopied ? '¡Enlace copiado!' : 'Copiar enlace'}
+                        aria-label={isCopied ? 'Enlace copiado al portapapeles' : 'Copiar enlace de descarga'}
+                      >
+                        {isCopied ? (
+                          <Check className="w-4 h-4 animate-bounce" aria-hidden="true" />
+                        ) : (
+                          <Copy className="w-4 h-4" aria-hidden="true" />
+                        )}
+                      </button>
+                      <a
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-secondary btn-icon p-2"
+                        aria-label={`Descargar ${att.filename}`}
+                      >
+                        <Download className="w-4 h-4" aria-hidden="true" />
+                      </a>
                     </div>
                   </a>
                 );

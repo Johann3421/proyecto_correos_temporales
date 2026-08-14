@@ -12,38 +12,29 @@ export function useInbox() {
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Track whether initial domain fetch is done to avoid race on first inbox creation
   const domainsReadyRef = useRef(false);
   const initStartedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
-  const triggerToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  }, []);
-
-  // Create new inbox — accepts a domain override to avoid stale closure
+  // Create new inbox
   const generateNewInbox = useCallback(
     async (domainOverride?: string, customPrefix?: string) => {
       setIsLoading(true);
       setError(null);
       try {
-        const domainToUse =
-          domainOverride || selectedDomain || 'tempmail.local';
+        const domainToUse = domainOverride || selectedDomain || 'tempmail.local';
         const data = await api.createInbox(domainToUse, customPrefix);
         setInbox(data);
         setMessages([]);
         localStorage.setItem(STORAGE_KEY, data.access_token);
-        triggerToast('¡Nuevo correo generado!');
       } catch {
         setError('Error al generar la bandeja de entrada');
       } finally {
         setIsLoading(false);
       }
     },
-    [selectedDomain, triggerToast],
+    [selectedDomain],
   );
 
   // Step 1: Fetch available domains
@@ -91,24 +82,22 @@ export function useInbox() {
   }, [selectedDomain, generateNewInbox]);
 
   // Handle live WebSocket events
-  const handleWsMessage = useCallback(
-    (payload: any) => {
-      if (payload.type === 'NEW_MESSAGE' && payload.message) {
-        const newMsg: MessageSummary = payload.message;
-        setMessages((prev) => [newMsg, ...prev.filter((m) => m.id !== newMsg.id)]);
-        playNotificationSound();
-        triggerToast('📬 ¡Tienes un mensaje nuevo!');
-      }
-    },
-    [triggerToast],
-  );
+  const handleWsMessage = useCallback((payload: any) => {
+    if (payload.type === 'NEW_MESSAGE' && payload.message) {
+      const newMsg: MessageSummary = payload.message;
+      setMessages((prev) => [newMsg, ...prev.filter((m) => m.id !== newMsg.id)]);
+      playNotificationSound();
+      // Toast will be handled by App component via custom event
+      window.dispatchEvent(new CustomEvent('new-message', { detail: newMsg }));
+    }
+  }, []);
 
   const { isConnected } = useWebSocket({
     token: inbox ? inbox.access_token : null,
     onMessage: handleWsMessage,
   });
 
-  // Countdown timer — resets when inbox changes
+  // Countdown timer
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!inbox || inbox.remaining_seconds <= 0) return;
@@ -118,7 +107,7 @@ export function useInbox() {
         if (!prev) return null;
         const newSecs = prev.remaining_seconds - 1;
         if (newSecs <= 0) {
-          triggerToast('⚠️ Tu correo ha expirado');
+          window.dispatchEvent(new CustomEvent('inbox-expired'));
           return { ...prev, remaining_seconds: 0, is_active: false };
         }
         return { ...prev, remaining_seconds: newSecs };
@@ -128,18 +117,17 @@ export function useInbox() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [inbox?.access_token, inbox?.expires_at, triggerToast]);
+  }, [inbox?.access_token, inbox?.expires_at]);
 
   const refreshMessages = useCallback(async () => {
     if (!inbox) return;
     try {
       const msgs = await api.getMessages(inbox.access_token);
       setMessages(msgs);
-      triggerToast('Bandeja actualizada');
     } catch {
       // ignore
     }
-  }, [inbox, triggerToast]);
+  }, [inbox]);
 
   const extendTime = useCallback(
     async (minutes: number = 10) => {
@@ -147,14 +135,12 @@ export function useInbox() {
       try {
         const updated = await api.extendInbox(inbox.access_token, minutes);
         setInbox(updated);
-        triggerToast(
-          `Tiempo extendido (+${minutes >= 60 ? `${minutes / 60}h` : `${minutes} min`})`,
-        );
       } catch {
-        triggerToast('No se pudo extender el tiempo');
+        // Error will be handled by caller
+        throw new Error('No se pudo extender el tiempo');
       }
     },
-    [inbox, triggerToast],
+    [inbox],
   );
 
   const deleteInbox = useCallback(async () => {
@@ -162,12 +148,12 @@ export function useInbox() {
     try {
       await api.deleteInbox(inbox.access_token);
       localStorage.removeItem(STORAGE_KEY);
-      initStartedRef.current = false; // allow re-init
+      initStartedRef.current = false;
       await generateNewInbox(selectedDomain);
     } catch {
-      triggerToast('Error al eliminar bandeja');
+      throw new Error('Error al eliminar bandeja');
     }
-  }, [inbox, selectedDomain, generateNewInbox, triggerToast]);
+  }, [inbox, selectedDomain, generateNewInbox]);
 
   return {
     inbox,
@@ -177,7 +163,6 @@ export function useInbox() {
     setSelectedDomain,
     isLoading,
     error,
-    toastMessage,
     isConnected,
     generateNewInbox,
     refreshMessages,
