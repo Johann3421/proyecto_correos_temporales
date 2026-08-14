@@ -15,20 +15,19 @@ const SESSION_TOKEN_KEY = 'tempmail_session_token';
 const SESSION_USER_KEY = 'tempmail_session_user';
 
 export function App() {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-  
+  const [isDark, setIsDark] = useState<boolean>(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches,
+  );
+
   // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [username, setUsername] = useState<string | null>(null);
 
-  const [isQRModalOpen, setIsQRModalOpen] = useState<boolean>(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [selectedMessageDetail, setSelectedMessageDetail] = useState<IMessageDetail | null>(null);
-  const [isLoadingMessage, setIsLoadingMessage] = useState<boolean>(false);
-  const [messageError, setMessageError] = useState<string | null>(null);
+  const [isLoadingMessage, setIsLoadingMessage] = useState(false);
 
   const {
     inbox,
@@ -47,13 +46,9 @@ export function App() {
     setMessages,
   } = useInbox();
 
-  // Dark mode handler
+  // Dark mode
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
   // Session verification on mount
@@ -61,30 +56,26 @@ export function App() {
     const token = localStorage.getItem(SESSION_TOKEN_KEY);
     const savedUser = localStorage.getItem(SESSION_USER_KEY);
     if (!token) {
-      setIsAuthenticated(false);
       setAuthChecking(false);
       return;
     }
 
-    api.verifySession(token)
+    api
+      .verifySession(token)
       .then((res) => {
         if (res.valid) {
           setIsAuthenticated(true);
-          setUsername(res.username || savedUser || 'demo');
+          setUsername(res.username || savedUser || 'user');
         } else {
           localStorage.removeItem(SESSION_TOKEN_KEY);
           localStorage.removeItem(SESSION_USER_KEY);
-          setIsAuthenticated(false);
         }
       })
       .catch(() => {
-        // Fallback: local token exists
         setIsAuthenticated(true);
-        setUsername(savedUser || 'demo');
+        setUsername(savedUser || 'user');
       })
-      .finally(() => {
-        setAuthChecking(false);
-      });
+      .finally(() => setAuthChecking(false));
   }, []);
 
   const handleLoginSuccess = (session: LoginResponse) => {
@@ -97,11 +88,7 @@ export function App() {
   const handleLogout = useCallback(async () => {
     const token = localStorage.getItem(SESSION_TOKEN_KEY);
     if (token) {
-      try {
-        await api.logout(token);
-      } catch {
-        // ignore
-      }
+      try { await api.logout(token); } catch { /* ignore */ }
     }
     localStorage.removeItem(SESSION_TOKEN_KEY);
     localStorage.removeItem(SESSION_USER_KEY);
@@ -114,138 +101,128 @@ export function App() {
     if (!inbox) return;
     setSelectedMessageId(msgId);
     setIsLoadingMessage(true);
-    setMessageError(null);
     try {
       const detail = await api.getMessageDetail(inbox.access_token, msgId);
       setSelectedMessageDetail(detail);
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, is_read: true } : m)),
       );
-    } catch {
-      setMessageError('No se pudo cargar el contenido del mensaje.');
-    } finally {
-      setIsLoadingMessage(false);
-    }
+    } catch { /* ignore */ }
+    finally { setIsLoadingMessage(false); }
   };
 
   const handleBackToList = () => {
     setSelectedMessageId(null);
     setSelectedMessageDetail(null);
-    setMessageError(null);
   };
 
-  // If session is verifying on initial load
+  // Auth checking spinner
   if (authChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-          <div className="w-4 h-4 border-2 border-cobalt-600 border-t-transparent rounded-full animate-spin" />
-          <span>Verificando sesión...</span>
+      <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-950">
+        <div className="flex items-center gap-2 text-xs text-surface-500">
+          <div className="w-3.5 h-3.5 border-2 border-accent-600 border-t-transparent rounded-full animate-spin" />
+          Verificando sesión…
         </div>
       </div>
     );
   }
 
+  // Login screen — full page, no header
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Header */}
+    <div className="min-h-screen flex flex-col bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-100">
       <Header
         isConnected={isConnected}
         isDark={isDark}
         username={username}
         onToggleTheme={() => setIsDark((d) => !d)}
-        onLogout={isAuthenticated ? handleLogout : undefined}
+        onLogout={handleLogout}
       />
 
-      {/* Main Content: If not authenticated, show LoginView */}
-      {!isAuthenticated ? (
-        <main className="flex-1 max-w-md w-full mx-auto px-4 py-8">
-          <LoginView onLoginSuccess={handleLoginSuccess} />
-        </main>
-      ) : (
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-          {/* Global Error Banner */}
-          {error && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs sm:text-sm font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-              <button
-                onClick={() => generateNewInbox()}
-                className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Reintentar</span>
-              </button>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-4 sm:py-6 space-y-4">
+        {/* Error Banner */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-md bg-fail-DEFAULT/10 border border-fail-DEFAULT/20 text-fail-light dark:text-fail-dark text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button
+              onClick={() => generateNewInbox()}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-fail-DEFAULT text-white hover:bg-fail-light text-xs font-medium"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {/* Email Card */}
+        <EmailCard
+          inbox={inbox}
+          domains={domains}
+          selectedDomain={selectedDomain}
+          onSelectDomain={setSelectedDomain}
+          onGenerateNew={generateNewInbox}
+          onRefresh={refreshMessages}
+          onDelete={deleteInbox}
+          onOpenQR={() => setIsQRModalOpen(true)}
+          onExtendTime={extendTime}
+          isLoading={isLoading}
+        />
+
+        {/* Workspace */}
+        {messages.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* Inbox list */}
+            <div className={`lg:col-span-5 ${selectedMessageId ? 'hidden lg:block' : ''}`}>
+              <InboxList
+                messages={messages}
+                selectedMessageId={selectedMessageId}
+                onSelectMessage={handleSelectMessage}
+              />
             </div>
-          )}
 
-          {/* Hero Email Box (Dominant focal point) */}
-          <EmailCard
-            inbox={inbox}
-            domains={domains}
-            selectedDomain={selectedDomain}
-            onSelectDomain={setSelectedDomain}
-            onGenerateNew={generateNewInbox}
-            onRefresh={refreshMessages}
-            onDelete={deleteInbox}
-            onOpenQR={() => setIsQRModalOpen(true)}
-            onExtendTime={extendTime}
-            isLoading={isLoading}
-          />
-
-          {/* Split Workspace Layout */}
-          {messages.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Inbox List */}
-              <div className={`lg:col-span-5 ${selectedMessageId ? 'hidden lg:block' : 'block'}`}>
-                <InboxList
-                  messages={messages}
-                  selectedMessageId={selectedMessageId}
-                  onSelectMessage={handleSelectMessage}
+            {/* Message reader */}
+            <div className={`lg:col-span-7 ${!selectedMessageId ? 'hidden lg:block' : ''}`}>
+              {selectedMessageId ? (
+                <MessageDetail
+                  token={inbox?.access_token || ''}
+                  message={selectedMessageDetail}
+                  isLoading={isLoadingMessage}
+                  onBack={handleBackToList}
                 />
-              </div>
-
-              {/* Right Column: Message Detail Pane */}
-              <div className={`lg:col-span-7 ${!selectedMessageId ? 'hidden lg:block' : 'block'}`}>
-                {selectedMessageId ? (
-                  <MessageDetail
-                    token={inbox?.access_token || ''}
-                    message={selectedMessageDetail}
-                    isLoading={isLoadingMessage}
-                    onBack={handleBackToList}
-                  />
-                ) : (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
-                    <Mail className="w-8 h-8 mb-2 opacity-50" />
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                      Selecciona un mensaje de la lista para leer su contenido
-                    </p>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="border border-surface-200 dark:border-surface-800 rounded-md p-8 text-center bg-surface-0 dark:bg-surface-900 min-h-[260px] flex flex-col items-center justify-center">
+                  <Mail className="w-6 h-6 text-surface-300 dark:text-surface-600 mb-2" />
+                  <p className="text-xs text-surface-500">
+                    Selecciona un mensaje de la lista
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </main>
-      )}
+          </div>
+        )}
+      </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>TempMail — Servicio de correo temporal y desechable</span>
-          <span className="font-mono text-[11px]">correos.abadgroup.tech</span>
+      <footer className="border-t border-surface-200 dark:border-surface-800 py-3">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between text-2xs text-surface-400 font-mono">
+          <span>tempmail — correo temporal</span>
+          <span>correos.abadgroup.tech</span>
         </div>
       </footer>
 
-      {/* QR Code Modal */}
       <QRCodeModal
         isOpen={isQRModalOpen}
         emailAddress={inbox?.email_address || ''}
         onClose={() => setIsQRModalOpen(false)}
       />
 
-      {/* Toast Feedback */}
       <Toast message={toastMessage} />
     </div>
   );

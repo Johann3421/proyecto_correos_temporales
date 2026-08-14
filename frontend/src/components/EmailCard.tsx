@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, RotateCw, QrCode, Sparkles, Trash2, Clock, Plus, Pencil } from 'lucide-react';
+import { Copy, Check, RotateCw, QrCode, Trash2, Clock, Plus, Pencil, RefreshCw } from 'lucide-react';
 import { InboxData } from '../services/api';
 import { formatRemainingTime } from '../utils/formatters';
 
@@ -55,48 +55,37 @@ export const EmailCard: React.FC<EmailCardProps> = ({
   const isLow = remaining > 0 && remaining < 120;
   const isCritical = remaining > 0 && remaining < 30;
 
-  const barColor = isCritical
-    ? 'bg-brick-500'
-    : isLow
-      ? 'bg-amber-400'
-      : 'bg-olive-500';
-
   return (
-    <section className="rounded-2xl border border-stone-200 dark:border-ink-800 bg-paper-50 dark:bg-ink-900 p-5 sm:p-7 shadow-soft">
-      {/* Top meta row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-          Tu dirección temporal
+    <section className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900 p-4 sm:p-5">
+      {/* Domain selector + label */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <span className="text-2xs font-mono uppercase tracking-wider text-surface-500">
+          Dirección activa
         </span>
         {domains.length > 1 && (
-          <label className="flex items-center gap-2 text-xs font-medium text-stone-500 dark:text-stone-400">
-            Dominio
-            <select
-              value={selectedDomain}
-              onChange={(e) => {
-                onSelectDomain(e.target.value);
-                onGenerateNew(e.target.value);
-              }}
-              disabled={isLoading}
-              className="rounded-lg border border-stone-200 dark:border-ink-800 bg-paper-100 dark:bg-ink-950 px-2 py-1 text-ink-800 dark:text-paper-100 font-mono focus:border-clay-500 focus:outline-none"
-            >
-              {domains.map((d) => (
-                <option key={d} value={d}>
-                  @{d}
-                </option>
-              ))}
-            </select>
-          </label>
+          <select
+            value={selectedDomain}
+            onChange={(e) => {
+              onSelectDomain(e.target.value);
+              onGenerateNew(e.target.value);
+            }}
+            disabled={isLoading}
+            className="text-2xs font-mono rounded border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900 px-2 py-1 text-surface-700 dark:text-surface-200 focus:border-accent-600 focus:outline-none"
+          >
+            {domains.map((d) => (
+              <option key={d} value={d}>@{d}</option>
+            ))}
+          </select>
         )}
       </div>
 
-      {/* Address + copy */}
-      <div className="flex flex-col sm:flex-row sm:items-stretch gap-3">
-        <div className="flex-1 min-w-0 flex items-center rounded-xl border border-stone-200 dark:border-ink-800 bg-white dark:bg-ink-950 px-4 py-4">
+      {/* Address row */}
+      <div className="flex items-stretch gap-2 mb-3">
+        <div className="flex-1 min-w-0 flex items-center px-3 py-2.5 rounded-md border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-950">
           {isLoading ? (
-            <div className="h-7 w-2/3 animate-pulse rounded bg-stone-200 dark:bg-ink-800" />
+            <div className="h-5 w-2/3 animate-pulse rounded bg-surface-200 dark:bg-surface-800" />
           ) : (
-            <span className="font-mono text-lg sm:text-2xl font-medium text-ink-900 dark:text-paper-50 break-all select-all">
+            <span className="font-mono text-base sm:text-lg font-medium text-surface-900 dark:text-surface-50 break-all select-all leading-tight">
               {inbox?.email_address || 'Generando…'}
             </span>
           )}
@@ -105,130 +94,123 @@ export const EmailCard: React.FC<EmailCardProps> = ({
         <button
           onClick={handleCopy}
           disabled={isLoading || !inbox}
-          className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
-            copied ? 'bg-olive-600 text-white' : 'bg-clay-600 hover:bg-clay-700 text-paper-50'
-          } disabled:opacity-50`}
+          className={`flex items-center gap-1.5 px-4 rounded-md text-sm font-medium transition-colors shrink-0 ${
+            copied
+              ? 'bg-ok-DEFAULT text-white'
+              : 'bg-accent-700 hover:bg-accent-800 text-white'
+          } disabled:opacity-40`}
         >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4" />
-              <span>Copiado</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4" />
-              <span>Copiar</span>
-            </>
-          )}
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
         </button>
       </div>
 
-      {/* Expiration progress */}
+      {/* Timer bar */}
       {inbox && remaining > 0 && (
-        <div className="mt-5">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400">
-              <Clock className="h-3.5 w-3.5" />
-              Expira en
-              <span className={`font-mono font-semibold ${isCritical ? 'text-brick-600 dark:text-brick-400' : isLow ? 'text-amber-600 dark:text-amber-400' : 'text-ink-700 dark:text-paper-100'}`}>
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="flex items-center gap-1 text-2xs text-surface-500">
+              <Clock className="h-3 w-3" />
+              <span className={`font-mono font-medium ${isCritical ? 'text-fail-light dark:text-fail-dark' : isLow ? 'text-warn-light dark:text-warn-dark' : 'text-surface-700 dark:text-surface-200'}`}>
                 {formatRemainingTime(remaining)}
               </span>
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => onExtendTime(10)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-clay-700 dark:text-clay-300 hover:bg-clay-50 dark:hover:bg-clay-950/40 transition-colors"
-                title="Sumar 10 minutos"
+                className="text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline"
               >
-                <Plus className="h-3 w-3" /> 10 min
+                +10m
               </button>
+              <span className="text-surface-300 dark:text-surface-700">·</span>
               <button
                 onClick={() => onExtendTime(60)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-clay-700 dark:text-clay-300 hover:bg-clay-50 dark:hover:bg-clay-950/40 transition-colors"
-                title="Sumar 1 hora"
+                className="text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline"
               >
-                <Plus className="h-3 w-3" /> 1 h
+                +1h
               </button>
             </div>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-stone-200 dark:bg-ink-800 overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-1000 ease-linear ${barColor}`} style={{ width: `${pct}%` }} />
+          <div className="h-1 w-full rounded-full bg-surface-200 dark:bg-surface-800 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                isCritical ? 'bg-fail-DEFAULT' : isLow ? 'bg-warn-DEFAULT' : 'bg-accent-600'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       )}
 
       {/* Custom alias form */}
       {isEditingAlias && (
-        <form onSubmit={handleCustomSubmit} className="mt-5 flex items-center gap-2">
-          <div className="flex-1 flex items-center rounded-lg border border-stone-200 dark:border-ink-800 bg-white dark:bg-ink-950 px-3 py-2 font-mono text-sm">
+        <form onSubmit={handleCustomSubmit} className="flex items-center gap-2 mb-3">
+          <div className="flex-1 flex items-center rounded-md border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-950 px-3 py-1.5 font-mono text-sm">
             <input
               type="text"
               value={customPrefix}
               onChange={(e) => setCustomPrefix(e.target.value)}
-              placeholder="alias-personalizado"
-              className="bg-transparent w-full focus:outline-none text-ink-900 dark:text-paper-50"
+              placeholder="mi-alias"
+              className="bg-transparent w-full focus:outline-none text-surface-900 dark:text-surface-50"
               autoFocus
             />
-            <span className="text-stone-400 select-none">@{selectedDomain || 'correos.abadgroup.tech'}</span>
+            <span className="text-surface-400 text-xs select-none ml-1">@{selectedDomain}</span>
           </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-clay-600 px-3.5 py-2 text-xs font-semibold text-paper-50 hover:bg-clay-700 transition-colors"
-          >
-            Aplicar
+          <button type="submit" className="rounded-md bg-accent-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-800">
+            Crear
           </button>
           <button
             type="button"
             onClick={() => setIsEditingAlias(false)}
-            className="rounded-lg border border-stone-200 dark:border-ink-800 px-3 py-2 text-xs font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-ink-800"
+            className="rounded-md border border-surface-200 dark:border-surface-700 px-3 py-1.5 text-xs font-medium text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
           >
             Cancelar
           </button>
         </form>
       )}
 
-      {/* Secondary actions */}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-stone-200 dark:border-ink-800">
-        <div className="flex items-center gap-1.5">
+      {/* Actions row */}
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-surface-200 dark:border-surface-800">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onGenerateNew()}
             disabled={isLoading}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-700 dark:text-paper-100 hover:bg-stone-100 dark:hover:bg-ink-800 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors disabled:opacity-40"
           >
-            <Sparkles className="h-4 w-4 text-clay-600 dark:text-clay-400" />
-            Nueva dirección
+            <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+            Nueva
           </button>
           <button
             onClick={() => setIsEditingAlias(!isEditingAlias)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-ink-800 transition-colors"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
           >
-            <Pencil className="h-3.5 w-3.5" />
-            Personalizar
+            <Pencil className="h-3 w-3" />
+            Alias
           </button>
           <button
             onClick={onOpenQR}
             disabled={isLoading || !inbox}
-            className="grid h-9 w-9 place-items-center rounded-lg text-ink-600 dark:text-paper-200 hover:bg-stone-100 dark:hover:bg-ink-800 transition-colors disabled:opacity-50"
-            title="Mostrar código QR"
+            className="rounded p-1 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors disabled:opacity-40"
+            title="Código QR"
           >
-            <QrCode className="h-4 w-4" />
+            <QrCode className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="grid h-9 w-9 place-items-center rounded-lg text-ink-600 dark:text-paper-200 hover:bg-stone-100 dark:hover:bg-ink-800 transition-colors disabled:opacity-50"
-            title="Refrescar mensajes"
+            className="rounded p-1 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors disabled:opacity-40"
+            title="Actualizar bandeja"
           >
-            <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RotateCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         <button
           onClick={onDelete}
           disabled={isLoading}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-brick-600 dark:text-brick-400 hover:bg-brick-50 dark:hover:bg-brick-950/40 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-fail-light dark:text-fail-dark hover:bg-fail-DEFAULT/10 transition-colors disabled:opacity-40"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3 w-3" />
           Eliminar
         </button>
       </div>
