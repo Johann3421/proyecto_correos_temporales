@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { EmailCard } from './components/EmailCard';
 import { ExpirationTimer } from './components/ExpirationTimer';
@@ -6,7 +6,8 @@ import { EmptyState } from './components/EmptyState';
 import { InboxList } from './components/InboxList';
 import { MessageDetail } from './components/MessageDetail';
 import { QRCodeModal } from './components/QRCodeModal';
-import { ToastContainer, useToast } from './components/ui/Toast';
+import { DynamicIsland } from './components/DynamicIsland';
+import { Toast } from './components/Toast';
 import { useInbox } from './hooks/useInbox';
 import { api, MessageDetail as IMessageDetail } from './services/api';
 import { AlertTriangle, RefreshCw, MailWarning } from 'lucide-react';
@@ -29,6 +30,7 @@ export function App() {
     setSelectedDomain,
     isLoading,
     error,
+    toastMessage,
     isConnected,
     generateNewInbox,
     refreshMessages,
@@ -36,8 +38,6 @@ export function App() {
     deleteInbox,
     setMessages,
   } = useInbox();
-
-  const { toasts, dismiss, success, error: showError, warning, info } = useToast();
 
   // Dark mode handler
   useEffect(() => {
@@ -48,34 +48,8 @@ export function App() {
     }
   }, [isDark]);
 
-  // Handle global error
-  useEffect(() => {
-    if (error) {
-      showError(error, 5000);
-    }
-  }, [error, showError]);
-
-  // Handle custom events from useInbox hook
-  useEffect(() => {
-    const handleNewMessage = (e: CustomEvent) => {
-      info('���� ¡Nuevo mensaje recibido!', 4000);
-    };
-
-    const handleInboxExpired = () => {
-      warning('������ Tu correo ha expirado', 5000);
-    };
-
-    window.addEventListener('new-message', handleNewMessage as EventListener);
-    window.addEventListener('inbox-expired', handleInboxExpired as EventListener);
-
-    return () => {
-      window.removeEventListener('new-message', handleNewMessage as EventListener);
-      window.removeEventListener('inbox-expired', handleInboxExpired as EventListener);
-    };
-  }, [info, warning]);
-
   // Load message detail when selecting
-  const handleSelectMessage = useCallback(async (msgId: string) => {
+  const handleSelectMessage = async (msgId: string) => {
     if (!inbox) return;
     setSelectedMessageId(msgId);
     setIsLoadingMessage(true);
@@ -83,71 +57,61 @@ export function App() {
     try {
       const detail = await api.getMessageDetail(inbox.access_token, msgId);
       setSelectedMessageDetail(detail);
+      // Mark as read in the local list state
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, is_read: true } : m)),
       );
     } catch {
-      setMessageError('No se pudo cargar el mensaje. Intenta de nuevo.');
+      setMessageError('No se pudo cargar el contenido del mensaje.');
     } finally {
       setIsLoadingMessage(false);
     }
-  }, [inbox, setMessages]);
+  };
 
-  const handleBackToList = useCallback(() => {
+  const handleBackToList = () => {
     setSelectedMessageId(null);
     setSelectedMessageDetail(null);
     setMessageError(null);
-  }, []);
-
-  // Wrapped handlers with toast feedback
-  const handleGenerateNew = useCallback(async (domain?: string) => {
-    await generateNewInbox(domain);
-    success('��� Nuevo correo generado');
-  }, [generateNewInbox, success]);
-
-  const handleRefresh = useCallback(async () => {
-    await refreshMessages();
-    info('Bandeja actualizada');
-  }, [refreshMessages, info]);
-
-  const handleExtend = useCallback(async (minutes: number) => {
-    try {
-      await extendTime(minutes);
-      success(`Tiempo extendido (+${minutes >= 60 ? `${minutes / 60}h` : `${minutes} min`})`);
-    } catch {
-      showError('No se pudo extender el tiempo');
-    }
-  }, [extendTime, success, showError]);
-
-  const handleDelete = useCallback(async () => {
-    try {
-      await deleteInbox();
-      success('Bandeja eliminada, generando nueva...');
-    } catch {
-      showError('Error al eliminar bandeja');
-    }
-  }, [deleteInbox, success, showError]);
+  };
 
   const isExpired = inbox && !inbox.is_active && inbox.remaining_seconds <= 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-clay-50 dark:bg-ink-950 text-charcoal-900 dark:text-charcoal-100 transition-colors duration-normal ease-out-expo">
+    <div className="min-h-screen flex flex-col transition-colors duration-300 pb-28">
+      {/* Top Glass Navigation Bar */}
       <Header
         isConnected={isConnected}
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
       />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Main Container */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+
+        {/* Global Error Banner */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 rounded-3xl bg-apple-red/10 border border-apple-red/30 text-apple-red text-xs sm:text-sm font-semibold animate-shake">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>{error}</span>
+            <button
+              onClick={() => generateNewInbox()}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-apple-red text-white hover:opacity-90 transition-opacity text-xs font-bold shadow-sm"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reintentar</span>
+            </button>
+          </div>
+        )}
+
         {/* Hero Email Card */}
         <EmailCard
           inbox={inbox}
           domains={domains}
           selectedDomain={selectedDomain}
           onSelectDomain={setSelectedDomain}
-          onGenerateNew={handleGenerateNew}
-          onRefresh={handleRefresh}
-          onDelete={handleDelete}
+          onGenerateNew={generateNewInbox}
+          onRefresh={refreshMessages}
+          onDelete={deleteInbox}
           onOpenQR={() => setIsQRModalOpen(true)}
           isLoading={isLoading}
         />
@@ -158,42 +122,41 @@ export function App() {
             remainingSeconds={inbox.remaining_seconds}
             createdAt={inbox.created_at}
             expiresAt={inbox.expires_at}
-            onExtendTime={handleExtend}
+            onExtendTime={extendTime}
           />
         )}
 
-        {/* Expired Banner */}
+        {/* Expired Notification Banner */}
         {isExpired && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-warning-light dark:bg-warning-dark/20 border border-warning-dark/30 text-warning-dark dark:text-warning-light animate-slide-up">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-3xl glass-card border-apple-amber/30 text-apple-amber">
             <div className="flex items-center gap-3">
-              <MailWarning className="w-6 h-6 shrink-0" aria-hidden="true" />
+              <MailWarning className="w-6 h-6 shrink-0" />
               <div>
-                <p className="font-semibold text-body-sm">Tu correo temporal ha expirado</p>
-                <p className="text-caption opacity-80">Ya no recibirás nuevos mensajes en esta dirección.</p>
+                <p className="font-bold text-sm">Esta bandeja temporal ha expirado</p>
+                <p className="text-xs opacity-85">Los nuevos correos ya no se recibirán en esta dirección.</p>
               </div>
             </div>
             <button
-              onClick={() => handleGenerateNew()}
-              className="btn-warning btn-sm shrink-0 flex items-center gap-2"
+              onClick={() => generateNewInbox()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-apple-amber text-white font-bold text-xs sm:text-sm hover:opacity-90 transition-opacity shadow-md shadow-apple-amber/30 shrink-0"
             >
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              <span>Generar nuevo correo</span>
+              <RefreshCw className="w-4 h-4" />
+              <span>Generar nueva bandeja</span>
             </button>
           </div>
         )}
 
-        {/* Inbox / Message Detail View */}
+        {/* Message Area: Split / List / Reader View */}
         <div className="w-full">
-          {/* Message error */}
           {messageError && (
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-error-light dark:bg-error-dark/20 border border-error-dark/30 text-error-dark dark:text-error-light text-body-sm font-medium mb-4 animate-slide-down">
-              <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden="true" />
-              <span className="flex-1">{messageError}</span>
+            <div className="flex items-center gap-3 p-4 rounded-3xl bg-apple-red/10 border border-apple-red/30 text-apple-red text-xs sm:text-sm font-semibold mb-4">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{messageError}</span>
               <button
                 onClick={handleBackToList}
-                className="shrink-0 text-caption font-medium underline underline-offset-2 hover:no-underline"
+                className="ml-auto text-xs font-bold underline underline-offset-2"
               >
-                Volver
+                Volver a la lista
               </button>
             </div>
           )}
@@ -217,11 +180,22 @@ export function App() {
         </div>
       </main>
 
+      {/* Dynamic Island Floating Quick Bar */}
+      {inbox && (
+        <DynamicIsland
+          emailAddress={inbox.email_address}
+          remainingSeconds={inbox.remaining_seconds}
+          onGenerateNew={() => generateNewInbox()}
+          onOpenQR={() => setIsQRModalOpen(true)}
+          isLoading={isLoading}
+        />
+      )}
+
       {/* Footer */}
-      <footer className="w-full border-t border-charcoal-200 dark:border-ink-800 py-6 text-center text-caption text-charcoal-500 dark:text-charcoal-400">
+      <footer className="w-full border-t border-black/[0.05] dark:border-white/[0.08] py-6 text-center text-xs text-studio-400">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 TempMail — Correos temporales simples y privados.</p>
-          <p>FastAPI + React + WebSockets</p>
+          <p>© 2026 AirInbox — Correos temporales privados y desechables.</p>
+          <p>Diseño Apple Studio &amp; Glassmorphism</p>
         </div>
       </footer>
 
@@ -232,8 +206,8 @@ export function App() {
         onClose={() => setIsQRModalOpen(false)}
       />
 
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      {/* Top Notification Toast */}
+      <Toast message={toastMessage} />
     </div>
   );
 }

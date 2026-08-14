@@ -1,5 +1,4 @@
 import React from 'react';
-import { clsx } from 'clsx';
 import { Clock, Plus, Hourglass } from 'lucide-react';
 import { formatRemainingTime } from '../utils/formatters';
 
@@ -23,60 +22,34 @@ export const ExpirationTimer: React.FC<ExpirationTimerProps> = ({
 
   const percentage = Math.min(100, Math.max(0, (remainingSeconds / totalSeconds) * 100));
 
-  const isWarning = remainingSeconds < 600; // 10 minutes
-  const isCritical = remainingSeconds < 180; // 3 minutes
-
-  const ringColor = isCritical
-    ? 'text-error-DEFAULT'
-    : isWarning
-      ? 'text-warning-DEFAULT'
-      : 'text-sage-500';
-
-  const textColor = isCritical
-    ? 'text-error-DEFAULT animate-pulse'
-    : isWarning
-      ? 'text-warning-DEFAULT'
-      : 'text-sage-600 dark:text-sage-400';
-
-  const borderColor = isCritical
-    ? 'border-error-DEFAULT/40'
-    : isWarning
-      ? 'border-warning-DEFAULT/40'
-      : 'border-sage-500/30';
-
-  const bgColor = isCritical
-    ? 'bg-error-light dark:bg-error-dark/10'
-    : isWarning
-      ? 'bg-warning-light dark:bg-warning-dark/10'
-      : 'bg-sage-50 dark:bg-sage-900/20';
+  let colorClass = 'text-apple-blue stroke-apple-blue';
+  let badgeClass = 'text-apple-blue dark:text-apple-blueDark';
+  if (remainingSeconds < 120) {
+    colorClass = 'text-apple-amber stroke-apple-amber';
+    badgeClass = 'text-apple-amber';
+  }
+  if (remainingSeconds < 30) {
+    colorClass = 'text-apple-red stroke-apple-red';
+    badgeClass = 'text-apple-red animate-pulse';
+  }
 
   const dash = `${percentage} 100`;
 
-  const extensions = [
-    { minutes: 10, label: '+10 min' },
-    { minutes: 60, label: '+1 hora' },
-    { minutes: 1440, label: '+24 hrs', hidden: 'hidden lg:flex' },
-  ];
-
   return (
-    <div className={clsx(
-      'rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4',
-      'bg-white dark:bg-ink-900 shadow-soft dark:shadow-medium',
-      bgColor,
-      borderColor
-    )}>
-      <div className="flex items-center gap-4 w-full sm:w-auto">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl glass-card transition-all">
+      {/* Time Display with Circular Ring */}
+      <div className="flex items-center gap-3.5 w-full sm:w-auto">
         <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
-          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
             <path
-              className="text-charcoal-200 dark:text-ink-800"
+              className="text-black/[0.06] dark:text-white/[0.08]"
               strokeWidth="3"
               stroke="currentColor"
               fill="none"
               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
             />
             <path
-              className={clsx('transition-all duration-1000 ease-linear', ringColor)}
+              className={`transition-all duration-1000 ease-linear ${colorClass}`}
               strokeDasharray={dash}
               strokeWidth="3"
               strokeLinecap="round"
@@ -85,34 +58,45 @@ export const ExpirationTimer: React.FC<ExpirationTimerProps> = ({
               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
             />
           </svg>
-          <Hourglass className="w-5 h-5 absolute text-charcoal-400 dark:text-charcoal-500" aria-hidden="true" />
+          <Hourglass className="w-4 h-4 absolute text-studio-600 dark:text-studio-300" />
         </div>
 
         <div>
-          <div className="flex items-center gap-1.5 text-caption font-medium text-charcoal-500 dark:text-charcoal-400 mb-1">
-            <Clock className="w-4 h-4" aria-hidden="true" />
-            <span>Tiempo restante</span>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-studio-500 dark:text-studio-400 flex items-center gap-1.5 mb-0.5">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Tiempo de vida del correo</span>
           </div>
-          <div className={clsx('text-xl sm:text-2xl font-bold font-mono tabular-nums', textColor)}>
+          <div className={`text-xl sm:text-2xl font-bold font-mono ${badgeClass}`}>
             {formatRemainingTime(remainingSeconds)}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
-        {extensions.map((ext) => (
-          <button
-            key={ext.minutes}
-            onClick={() => onExtendTime(ext.minutes)}
-            className={clsx(
-              'btn-secondary btn-sm flex items-center gap-1.5',
-              ext.hidden
-            )}
-          >
-            <Plus className="w-3.5 h-3.5 text-sage-600 dark:text-sage-400" aria-hidden="true" />
-            <span>{ext.label}</span>
-          </button>
-        ))}
+      {/* Extension Pills */}
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <button
+          onClick={() => onExtendTime(10)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl glass-pill hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-xs font-bold text-studio-800 dark:text-studio-200 transition-all active:scale-95 shadow-sm"
+        >
+          <Plus className="w-3.5 h-3.5 text-apple-blue" />
+          <span>+10 Min</span>
+        </button>
+
+        <button
+          onClick={() => onExtendTime(60)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl glass-pill hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-xs font-bold text-studio-800 dark:text-studio-200 transition-all active:scale-95 shadow-sm"
+        >
+          <Plus className="w-3.5 h-3.5 text-apple-blue" />
+          <span>+1 Hora</span>
+        </button>
+
+        <button
+          onClick={() => onExtendTime(1440)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl glass-pill hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-xs font-bold text-studio-800 dark:text-studio-200 transition-all active:scale-95 shadow-sm hidden md:flex"
+        >
+          <Plus className="w-3.5 h-3.5 text-apple-blue" />
+          <span>+24 Horas</span>
+        </button>
       </div>
     </div>
   );

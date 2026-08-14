@@ -12,198 +12,56 @@
   }
 
   body {
-    @apply bg-clay-50 dark:bg-ink-950 text-charcoal-900 dark:text-charcoal-100 font-sans antialiased;
-    @apply transition-colors duration-normal ease-out-expo;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+    @apply bg-studio-50 dark:bg-studio-950 text-studio-900 dark:text-studio-100 font-sans antialiased selection:bg-apple-blue selection:text-white;
+    background-image: 
+      radial-gradient(at 15% 15%, rgba(0, 113, 227, 0.08) 0px, transparent 50%),
+      radial-gradient(at 85% 85%, rgba(48, 209, 88, 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(175, 82, 222, 0.04) 0px, transparent 60%);
+    background-attachment: fixed;
   }
 
-  /* Focus styles */
-  *:focus-visible {
-    @apply outline-none ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-ink-950;
-  }
-
-  /* Selection */
-  ::selection {
-    @apply bg-sage-300 dark:bg-sage-700 text-charcoal-950 dark:text-charcoal-50;
-  }
-
-  /* Scrollbars */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-charcoal-300 dark:bg-charcoal-600 rounded-full border-2 border-clay-50 dark:border-ink-950;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-charcoal-400 dark:bg-charcoal-500;
-  }
-
-  ::-webkit-scrollbar-corner {
-    @apply bg-transparent;
-  }
-
-  /* Firefox scrollbar */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: theme('colors.charcoal.300') transparent;
-  }
-
-  .dark * {
-    scrollbar-color: theme('colors.charcoal.600') transparent;
+  .dark body {
+    background-image: 
+      radial-gradient(at 20% 10%, rgba(10, 132, 255, 0.12) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(48, 209, 88, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 40%, rgba(175, 82, 222, 0.05) 0px, transparent 60%);
+    background-attachment: fixed;
   }
 }
 
 @layer components {
-  /* Surface cards */
-  .surface {
-    @apply bg-white dark:bg-ink-900 border border-charcoal-200 dark:border-ink-800;
-    @apply shadow-soft dark:shadow-medium;
+  /* Apple Glassmorphism Surfaces */
+  .glass-panel {
+    @apply bg-white/70 dark:bg-studio-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/[0.08] shadow-glass dark:shadow-glass-dark;
   }
 
-  .surface-elevated {
-    @apply bg-white dark:bg-ink-900 border border-charcoal-200 dark:border-ink-800;
-    @apply shadow-medium dark:shadow-strong;
+  .glass-card {
+    @apply bg-white/80 dark:bg-studio-900/70 backdrop-blur-xl border border-white/80 dark:border-white/[0.07] shadow-glass dark:shadow-glass-dark;
   }
 
-  .surface-overlay {
-    @apply bg-white/95 dark:bg-ink-900/95 backdrop-blur-sm border border-charcoal-200/80 dark:border-ink-800/80;
-    @apply shadow-strong dark:shadow-strong;
+  .glass-pill {
+    @apply bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-md border border-black/[0.06] dark:border-white/[0.08];
   }
 
-  /* Interactive elements */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-body-sm;
-    @apply transition-all duration-fast ease-out-expo;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-2;
-    @apply disabled:opacity-50 disabled:pointer-events-none;
+  .glass-input {
+    @apply bg-white/60 dark:bg-studio-800/60 backdrop-blur-md border border-studio-200/80 dark:border-white/[0.08] focus:border-apple-blue dark:focus:border-apple-blueDark focus:ring-4 focus:ring-apple-blue/15 dark:focus:ring-apple-blueDark/20;
   }
 
-  .btn-primary {
-    @apply btn bg-sage-600 text-white hover:bg-sage-700 active:bg-sage-800;
-    @apply shadow-soft hover:shadow-medium;
-  }
-
-  .btn-secondary {
-    @apply btn bg-charcoal-100 dark:bg-ink-800 text-charcoal-700 dark:text-charcoal-200;
-    @apply border border-charcoal-200 dark:border-ink-700;
-    @apply hover:bg-charcoal-200 dark:hover:bg-ink-700;
-    @apply active:bg-charcoal-300 dark:active:bg-ink-600;
-  }
-
-  .btn-ghost {
-    @apply btn bg-transparent text-charcoal-600 dark:text-charcoal-300;
-    @apply hover:bg-charcoal-100 dark:hover:bg-ink-800;
-    @apply active:bg-charcoal-200 dark:active:bg-ink-700;
-  }
-
-  .btn-danger {
-    @apply btn bg-error-light text-error-dark hover:bg-error-light/80;
-    @apply border border-error-dark/20;
-  }
-
-  .btn-warning {
-    @apply btn bg-warning-light text-warning-dark hover:bg-warning-light/80;
-    @apply border border-warning-dark/20;
-  }
-
-  .btn-sm {
-    @apply px-3 py-1.5 rounded-lg text-caption gap-1.5;
-  }
-
-  .btn-icon {
-    @apply btn p-2.5;
-  }
-
-  /* Input fields */
-  .input {
-    @apply w-full px-4 py-3 rounded-xl bg-white dark:bg-ink-800;
-    @apply border border-charcoal-300 dark:border-ink-700;
-    @apply text-charcoal-900 dark:text-charcoal-100 placeholder:text-charcoal-400 dark:placeholder:text-charcoal-500;
-    @apply transition-all duration-fast;
-    @apply hover:border-charcoal-400 dark:hover:border-ink-600;
-    @apply focus:border-sage-500 focus:ring-2 focus:ring-sage-500/20 focus:outline-none;
-    @apply disabled:bg-charcoal-100 dark:disabled:bg-ink-800 disabled:cursor-not-allowed;
-  }
-
-  .input-error {
-    @apply border-error-DEFAULT focus:border-error-DEFAULT focus:ring-error-DEFAULT/20;
-  }
-
-  /* Badge/pill */
-  .badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-caption font-medium;
-    @apply transition-colors duration-fast;
-  }
-
-  .badge-success {
-    @apply badge bg-success-light text-success-dark dark:bg-success-dark/20 dark:text-success-light;
-  }
-
-  .badge-warning {
-    @apply badge bg-warning-light text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light;
-  }
-
-  .badge-error {
-    @apply badge bg-error-light text-error-dark dark:bg-error-dark/20 dark:text-error-light;
-  }
-
-  .badge-info {
-    @apply badge bg-info-light text-info-dark dark:bg-info-dark/20 dark:text-info-light;
-  }
-
-  .badge-neutral {
-    @apply badge bg-charcoal-100 dark:bg-ink-800 text-charcoal-600 dark:text-charcoal-300;
-    @apply border border-charcoal-200 dark:border-ink-700;
-  }
-
-  /* Divider */
-  .divider {
-    @apply border-charcoal-200 dark:border-ink-800;
-  }
-
-  /* Text helpers */
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .text-pretty {
-    text-wrap: pretty;
+  .glass-island {
+    @apply bg-white/85 dark:bg-studio-900/85 backdrop-blur-2xl border border-white/80 dark:border-white/[0.1] shadow-island;
   }
 }
 
-@layer utilities {
-  /* Animation delays */
-  .delay-100 { animation-delay: 100ms; }
-  .delay-200 { animation-delay: 200ms; }
-  .delay-300 { animation-delay: 300ms; }
-  .delay-400 { animation-delay: 400ms; }
-  .delay-500 { animation-delay: 500ms; }
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 
-  /* Gradient text */
-  .text-gradient {
-    @apply bg-gradient-to-r from-sage-600 to-clay-600 dark:from-sage-400 dark:to-clay-400 bg-clip-text text-transparent;
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  /* Glass effect */
-  .glass {
-    @apply bg-white/80 dark:bg-ink-900/80 backdrop-blur-md;
-  }
-
-  /* Hide scrollbar but keep scrolling */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
+::-webkit-scrollbar-thumb {
+  @apply bg-studio-300/60 dark:bg-studio-700/60 rounded-full hover:bg-studio-400 dark:hover:bg-studio-600 transition-colors;
 }

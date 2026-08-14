@@ -9,9 +9,9 @@ export const Toast: React.FC<ToastProps> = ({ message }) => {
   if (!message) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-scale-in">
-      <div className="flex items-center gap-2.5 px-4 py-3 bg-obsidian-850 border border-brand-500/40 text-slate-100 text-sm font-medium rounded-xl shadow-xl shadow-brand-500/10 backdrop-blur-md">
-        <Sparkles className="w-4 h-4 text-brand-400 animate-pulse" />
+    <div className="fixed top-20 inset-x-0 z-50 flex justify-center px-4 pointer-events-none animate-slide-down">
+      <div className="pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-full glass-island border border-white/80 dark:border-white/15 text-studio-900 dark:text-white text-xs sm:text-sm font-bold shadow-island backdrop-blur-2xl">
+        <Sparkles className="w-4 h-4 text-apple-blue dark:text-apple-blueDark animate-pulse" />
         <span>{message}</span>
       </div>
     </div>

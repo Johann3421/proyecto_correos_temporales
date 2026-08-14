@@ -1,6 +1,5 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { clsx } from 'clsx';
 import { X, Smartphone, Copy, Check } from 'lucide-react';
 
 interface QRCodeModalProps {
@@ -20,60 +19,43 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, emailAddress, 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-950/60 backdrop-blur-sm animate-fade-in"
-      onClick={handleOverlayClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="qr-modal-title"
-    >
-      <div className="relative w-full max-w-sm p-6 bg-white dark:bg-ink-900 rounded-2xl border border-charcoal-200 dark:border-ink-800 shadow-strong animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/70 backdrop-blur-2xl animate-fade-in">
+      <div className="relative w-full max-w-sm p-6 sm:p-8 glass-card rounded-4xl border border-white/80 dark:border-white/15 shadow-2xl text-center animate-scale-in">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 hover:bg-charcoal-100 dark:hover:bg-ink-800 transition-colors"
-          aria-label="Cerrar"
+          className="absolute top-5 right-5 p-2 rounded-full glass-pill hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-studio-400 hover:text-studio-700 dark:hover:text-white transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-sage-100 dark:bg-sage-900/30 text-sage-600 dark:text-sage-400 flex items-center justify-center">
-            <Smartphone className="w-6 h-6" aria-hidden="true" />
-          </div>
-
-          <h3 id="qr-modal-title" className="text-heading-md font-bold text-charcoal-900 dark:text-charcoal-100 mb-1">
-            Escanear en tu móvil
-          </h3>
-          <p className="text-body-sm text-charcoal-500 dark:text-charcoal-400">
-            Apunta la cámara para copiar el correo fácilmente
-          </p>
+        {/* Icon & Title */}
+        <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-apple-blue/10 dark:bg-apple-blueDark/20 text-apple-blue dark:text-apple-blueDark flex items-center justify-center">
+          <Smartphone className="w-6 h-6" />
         </div>
 
-        <div className="p-4 bg-white dark:bg-ink-800 rounded-xl border border-charcoal-200 dark:border-ink-700 shadow-inner inline-block mx-auto mb-6">
+        <h3 className="text-xl font-extrabold text-studio-900 dark:text-white mb-1 tracking-tight">
+          Escanear en iPhone / Android
+        </h3>
+        <p className="text-xs text-studio-500 dark:text-studio-400 mb-6">
+          Apunta con la cámara de tu móvil para copiar esta dirección o abrir la bandeja instantáneamente.
+        </p>
+
+        {/* QR Code Container with Apple Rounded Box */}
+        <div className="p-4 bg-white rounded-3xl border border-studio-200/80 shadow-lg inline-block mx-auto mb-6">
           <QRCodeSVG value={emailAddress} size={180} level="M" includeMargin={true} />
         </div>
 
-        <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-charcoal-50 dark:bg-ink-800 border border-charcoal-200 dark:border-ink-800 text-caption font-mono font-medium text-charcoal-800 dark:text-charcoal-200">
+        {/* Monospaced email address pill */}
+        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-xs font-mono text-studio-800 dark:text-studio-200">
           <span className="truncate">{emailAddress}</span>
           <button
             onClick={handleCopy}
-            className={clsx(
-              'btn-icon p-2 rounded-lg transition-colors flex-shrink-0',
-              copied
-                ? 'bg-success-light dark:bg-success-dark/20 text-success-DEFAULT'
-                : 'bg-sage-100 dark:bg-sage-900/30 text-sage-600 dark:text-sage-400 hover:bg-sage-200 dark:hover:bg-sage-800'
-            )}
+            className="p-1.5 rounded-xl bg-apple-blue text-white font-bold hover:bg-apple-blueHover transition-colors shrink-0 shadow-sm"
             title="Copiar correo"
-            aria-label={copied ? 'Copiado al portapapeles' : 'Copiar dirección de correo'}
           >
-            {copied ? <Check className="w-4 h-4 animate-bounce" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
