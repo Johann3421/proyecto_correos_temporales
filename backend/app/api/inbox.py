@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import generate_access_token, generate_random_email_prefix
+from app.core.security import generate_access_token, generate_random_email_prefix, generate_random_subdomain
 from app.db.models import Inbox, Message, Attachment
 from app.schemas.inbox import (
     InboxCreateRequest, InboxResponse, ExtendInboxRequest, DomainsResponse
@@ -49,9 +49,9 @@ async def create_inbox(
 ):
     """Create a brand new temporary inbox and return email address + access token."""
     payload = payload or InboxCreateRequest()
-    domain = payload.domain or settings.domains[0]
-    if domain not in settings.domains:
-        domain = settings.domains[0]
+    base_domain = payload.domain or settings.domains[0]
+    if base_domain not in settings.domains:
+        base_domain = settings.domains[0]
 
     prefix = (
         payload.custom_prefix.strip().lower()
@@ -63,7 +63,12 @@ async def create_inbox(
     if not prefix:
         prefix = generate_random_email_prefix()
 
-    email_address = f"{prefix}@{domain}"
+    # If dynamic subdomains are enabled, append a randomized realistic subdomain (e.g., node-42, k9x, relay-8)
+    if settings.ENABLE_RANDOM_SUBDOMAINS:
+        subdomain = generate_random_subdomain()
+        email_address = f"{prefix}@{subdomain}.{base_domain}"
+    else:
+        email_address = f"{prefix}@{base_domain}"
 
     # Ensure address uniqueness — collision is rare but handled
     stmt = select(Inbox).where(Inbox.email_address == email_address)
