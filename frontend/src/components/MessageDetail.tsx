@@ -65,22 +65,22 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
             className="flex items-center gap-1 text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline lg:hidden"
           >
             <ArrowLeft className="h-3 w-3" />
-            Volver
+            Volver a la lista
           </button>
 
-          {/* Save button */}
+          {/* Prominent Save / Bookmark button */}
           <button
             onClick={handleToggleSave}
             disabled={isSaving}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all shadow-sm ${
               message.is_saved
-                ? 'bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300'
-                : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
-            } disabled:opacity-40`}
-            title={message.is_saved ? 'Quitar de guardados' : 'Guardar correo'}
+                ? 'bg-accent-600 text-white hover:bg-accent-700'
+                : 'border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-700'
+            } disabled:opacity-40 ml-auto`}
+            title={message.is_saved ? 'Guardado en historial permanente' : 'Guardar este correo en mi historial'}
           >
             <Bookmark className={`h-3.5 w-3.5 ${message.is_saved ? 'fill-current' : ''}`} />
-            <span>{message.is_saved ? 'Guardado' : 'Guardar'}</span>
+            <span>{message.is_saved ? 'Correo Guardado ✓' : 'Guardar correo'}</span>
           </button>
         </div>
 

@@ -157,6 +157,15 @@ export function App() {
     );
   };
 
+  const handleToggleSaveFromList = async (msgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!inbox) return;
+    try {
+      const result = await api.toggleSaveMessage(inbox.access_token, msgId, sessionToken);
+      handleSaveToggled(msgId, result.saved);
+    } catch { /* ignore */ }
+  };
+
   // Auth loading
   if (authChecking) {
     return (
@@ -258,6 +267,7 @@ export function App() {
                     messages={messages}
                     selectedMessageId={selectedMessageId}
                     onSelectMessage={handleSelectMessage}
+                    onToggleSave={handleToggleSaveFromList}
                   />
                 </div>
                 <div className={`lg:col-span-7 ${!selectedMessageId ? 'hidden lg:block' : ''}`}>
