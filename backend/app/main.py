@@ -14,27 +14,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger("tempmail")
 
-smtp_controller = None
+smtp_server_instance = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global smtp_controller
+    global smtp_server_instance
     logger.info("Starting TempMail FastAPI service...")
     
     # Start background cleanup job
     start_cleanup_scheduler()
     
-    # Start SMTP receiver server
+    # Start SMTP receiver server natively on the event loop
     try:
-        smtp_controller = start_smtp_server()
+        smtp_server_instance = await start_smtp_server()
     except Exception as e:
         logger.error(f"Could not start SMTP server: {e}")
 
     yield
 
     logger.info("Shutting down TempMail FastAPI service...")
-    if smtp_controller:
-        smtp_controller.stop()
+    if smtp_server_instance:
+        smtp_server_instance.close()
+        await smtp_server_instance.wait_closed()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

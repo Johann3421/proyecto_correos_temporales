@@ -1,6 +1,7 @@
 import logging
+import asyncio
 from datetime import datetime, timezone
-from aiosmtpd.controller import Controller
+from aiosmtpd.smtp import SMTP
 from sqlalchemy import select
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
@@ -13,9 +14,7 @@ logger = logging.getLogger("tempmail.smtp")
 
 class CustomSMTPHandler:
     """
-    aiosmtpd message handler.
-    handle_DATA must be a coroutine (async def) so the Controller's
-    event loop can await it directly.
+    aiosmtpd message handler running natively in FastAPI's main asyncio event loop.
     """
 
     async def handle_DATA(self, server, session, envelope):
@@ -26,7 +25,6 @@ class CustomSMTPHandler:
             f"to {rcpt_tos} from peer {peer}"
         )
 
-        # envelope.content is bytes in aiosmtpd
         raw_content: bytes = envelope.content
         parsed_email = parse_raw_email(raw_content)
 
@@ -56,11 +54,12 @@ class CustomSMTPHandler:
                     body_html=parsed_email["body_html"],
                     raw_size_kb=parsed_email["raw_size_kb"],
                     is_read=False,
+                    is_saved=False,
                 )
                 db.add(new_message)
-                await db.flush()  # populate new_message.id
+                await db.flush()
 
-                # Persist attachments (within size limit)
+                # Persist attachments
                 for att in parsed_email["attachments"]:
                     if att["size_bytes"] <= settings.MAX_ATTACHMENT_SIZE_BYTES:
                         db.add(
@@ -77,7 +76,7 @@ class CustomSMTPHandler:
                 await db.refresh(new_message)
 
                 logger.info(
-                    f"Message {new_message.id} stored for inbox {clean_rcpt}"
+                    f"Message {new_message.id} successfully stored for inbox {clean_rcpt}"
                 )
 
                 # Push real-time WebSocket notification
@@ -91,6 +90,7 @@ class CustomSMTPHandler:
                         "is_read": False,
                         "raw_size_kb": new_message.raw_size_kb,
                         "has_attachments": len(parsed_email["attachments"]) > 0,
+                        "is_saved": False,
                     },
                 }
                 await ws_manager.broadcast_to_token(inbox.access_token, ws_payload)
@@ -98,15 +98,19 @@ class CustomSMTPHandler:
         return "250 Message accepted for delivery"
 
 
-def start_smtp_server():
+async def start_smtp_server():
+    """
+    Start the SMTP server on the current running asyncio event loop.
+    This eliminates cross-thread loop collisions with SQLAlchemy/asyncpg.
+    """
+    loop = asyncio.get_running_loop()
     handler = CustomSMTPHandler()
-    controller = Controller(
-        handler,
-        hostname=settings.SMTP_HOST,
+    server = await loop.create_server(
+        lambda: SMTP(handler, enable_SMTPUTF8=True),
+        host=settings.SMTP_HOST,
         port=settings.SMTP_PORT,
     )
-    controller.start()
     logger.info(
-        f"SMTP server listening on {settings.SMTP_HOST}:{settings.SMTP_PORT}"
+        f"SMTP server successfully listening on {settings.SMTP_HOST}:{settings.SMTP_PORT} (native event loop)"
     )
-    return controller
+    return server
