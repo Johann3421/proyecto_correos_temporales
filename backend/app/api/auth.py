@@ -59,7 +59,7 @@ async def login(payload: LoginRequest):
     if not role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales incorrectas. Prueba con admin/admin1234 o demo/demo1234."
+            detail="Credenciales incorrectas."
         )
 
     # Generate session token

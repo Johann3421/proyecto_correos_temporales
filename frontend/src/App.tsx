@@ -6,13 +6,16 @@ import { InboxList } from './components/InboxList';
 import { MessageDetail } from './components/MessageDetail';
 import { QRCodeModal } from './components/QRCodeModal';
 import { LoginView } from './components/LoginView';
+import { SavedMessages } from './components/SavedMessages';
 import { Toast } from './components/Toast';
 import { useInbox } from './hooks/useInbox';
-import { api, MessageDetail as IMessageDetail, LoginResponse } from './services/api';
-import { AlertCircle, RefreshCw, Mail } from 'lucide-react';
+import { api, MessageDetail as IMessageDetail, LoginResponse, SavedMessage } from './services/api';
+import { AlertCircle, RefreshCw, Mail, Inbox as InboxIcon, Bookmark } from 'lucide-react';
 
 const SESSION_TOKEN_KEY = 'tempmail_session_token';
 const SESSION_USER_KEY = 'tempmail_session_user';
+
+type ActiveTab = 'inbox' | 'saved';
 
 export function App() {
   const [isDark, setIsDark] = useState<boolean>(() =>
@@ -24,10 +27,16 @@ export function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [username, setUsername] = useState<string | null>(null);
 
+  // Navigation
+  const [activeTab, setActiveTab] = useState<ActiveTab>('inbox');
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [selectedMessageDetail, setSelectedMessageDetail] = useState<IMessageDetail | null>(null);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
+
+  // Saved messages
+  const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([]);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
 
   const {
     inbox,
@@ -46,12 +55,14 @@ export function App() {
     setMessages,
   } = useInbox();
 
+  const sessionToken = typeof window !== 'undefined' ? localStorage.getItem(SESSION_TOKEN_KEY) || '' : '';
+
   // Dark mode
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  // Session verification on mount
+  // Session verification
   useEffect(() => {
     const token = localStorage.getItem(SESSION_TOKEN_KEY);
     const savedUser = localStorage.getItem(SESSION_USER_KEY);
@@ -78,6 +89,18 @@ export function App() {
       .finally(() => setAuthChecking(false));
   }, []);
 
+  // Fetch saved messages when tab changes
+  useEffect(() => {
+    if (activeTab === 'saved' && sessionToken) {
+      setIsLoadingSaved(true);
+      api
+        .getSavedMessages(sessionToken)
+        .then(setSavedMessages)
+        .catch(() => setSavedMessages([]))
+        .finally(() => setIsLoadingSaved(false));
+    }
+  }, [activeTab, sessionToken]);
+
   const handleLoginSuccess = (session: LoginResponse) => {
     localStorage.setItem(SESSION_TOKEN_KEY, session.access_token);
     localStorage.setItem(SESSION_USER_KEY, session.username);
@@ -96,7 +119,6 @@ export function App() {
     setUsername(null);
   }, []);
 
-  // Load message detail
   const handleSelectMessage = async (msgId: string) => {
     if (!inbox) return;
     setSelectedMessageId(msgId);
@@ -116,7 +138,26 @@ export function App() {
     setSelectedMessageDetail(null);
   };
 
-  // Auth checking spinner
+  const handleSendTest = async () => {
+    if (!inbox) return;
+    try {
+      await api.sendTestEmail(inbox.access_token);
+      // The WebSocket will handle the notification
+    } catch { /* ignore */ }
+  };
+
+  const handleSaveToggled = (messageId: string, saved: boolean) => {
+    // Update the detail view
+    if (selectedMessageDetail && String(selectedMessageDetail.id) === messageId) {
+      setSelectedMessageDetail({ ...selectedMessageDetail, is_saved: saved });
+    }
+    // Update the list
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, is_saved: saved } : m)),
+    );
+  };
+
+  // Auth loading
   if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-950">
@@ -128,7 +169,7 @@ export function App() {
     );
   }
 
-  // Login screen — full page, no header
+  // Login — full page
   if (!isAuthenticated) {
     return <LoginView onLoginSuccess={handleLoginSuccess} />;
   }
@@ -170,42 +211,79 @@ export function App() {
           onDelete={deleteInbox}
           onOpenQR={() => setIsQRModalOpen(true)}
           onExtendTime={extendTime}
+          onSendTest={handleSendTest}
           isLoading={isLoading}
         />
 
-        {/* Workspace */}
-        {messages.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            {/* Inbox list */}
-            <div className={`lg:col-span-5 ${selectedMessageId ? 'hidden lg:block' : ''}`}>
-              <InboxList
-                messages={messages}
-                selectedMessageId={selectedMessageId}
-                onSelectMessage={handleSelectMessage}
-              />
-            </div>
+        {/* Tab switcher */}
+        <div className="flex items-center gap-0.5 border-b border-surface-200 dark:border-surface-800">
+          <button
+            onClick={() => { setActiveTab('inbox'); handleBackToList(); }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === 'inbox'
+                ? 'border-accent-600 text-accent-700 dark:text-accent-400'
+                : 'border-transparent text-surface-500 hover:text-surface-900 dark:hover:text-surface-100'
+            }`}
+          >
+            <InboxIcon className="h-3.5 w-3.5" />
+            Bandeja
+            {messages.length > 0 && (
+              <span className="font-mono text-2xs bg-surface-100 dark:bg-surface-800 px-1 py-0.5 rounded">
+                {messages.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === 'saved'
+                ? 'border-accent-600 text-accent-700 dark:text-accent-400'
+                : 'border-transparent text-surface-500 hover:text-surface-900 dark:hover:text-surface-100'
+            }`}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+            Guardados
+          </button>
+        </div>
 
-            {/* Message reader */}
-            <div className={`lg:col-span-7 ${!selectedMessageId ? 'hidden lg:block' : ''}`}>
-              {selectedMessageId ? (
-                <MessageDetail
-                  token={inbox?.access_token || ''}
-                  message={selectedMessageDetail}
-                  isLoading={isLoadingMessage}
-                  onBack={handleBackToList}
-                />
-              ) : (
-                <div className="border border-surface-200 dark:border-surface-800 rounded-md p-8 text-center bg-surface-0 dark:bg-surface-900 min-h-[260px] flex flex-col items-center justify-center">
-                  <Mail className="w-6 h-6 text-surface-300 dark:text-surface-600 mb-2" />
-                  <p className="text-xs text-surface-500">
-                    Selecciona un mensaje de la lista
-                  </p>
+        {/* Tab content */}
+        {activeTab === 'inbox' ? (
+          <>
+            {messages.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                <div className={`lg:col-span-5 ${selectedMessageId ? 'hidden lg:block' : ''}`}>
+                  <InboxList
+                    messages={messages}
+                    selectedMessageId={selectedMessageId}
+                    onSelectMessage={handleSelectMessage}
+                  />
                 </div>
-              )}
-            </div>
-          </div>
+                <div className={`lg:col-span-7 ${!selectedMessageId ? 'hidden lg:block' : ''}`}>
+                  {selectedMessageId ? (
+                    <MessageDetail
+                      token={inbox?.access_token || ''}
+                      sessionToken={sessionToken}
+                      message={selectedMessageDetail}
+                      isLoading={isLoadingMessage}
+                      onBack={handleBackToList}
+                      onSaveToggled={handleSaveToggled}
+                    />
+                  ) : (
+                    <div className="border border-surface-200 dark:border-surface-800 rounded-md p-8 text-center bg-surface-0 dark:bg-surface-900 min-h-[260px] flex flex-col items-center justify-center">
+                      <Mail className="w-6 h-6 text-surface-300 dark:text-surface-600 mb-2" />
+                      <p className="text-xs text-surface-500">
+                        Selecciona un mensaje de la lista
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <SavedMessages messages={savedMessages} isLoading={isLoadingSaved} />
         )}
       </main>
 

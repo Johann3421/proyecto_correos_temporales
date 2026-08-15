@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Paperclip, Download, FileText, Code, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Paperclip, Download, FileText, Code, Copy, Check, Bookmark } from 'lucide-react';
 import { MessageDetail as IMessageDetail, api } from '../services/api';
 import { sanitizeHtmlContent } from '../utils/sanitize';
 import { formatFileSize } from '../utils/formatters';
 
 interface MessageDetailProps {
   token: string;
+  sessionToken: string;
   message: IMessageDetail | null;
   isLoading: boolean;
   onBack: () => void;
+  onSaveToggled: (messageId: string, saved: boolean) => void;
 }
 
 export const MessageDetail: React.FC<MessageDetailProps> = ({
   token,
+  sessionToken,
   message,
   isLoading,
   onBack,
+  onSaveToggled,
 }) => {
   const [activeTab, setActiveTab] = useState<'html' | 'text'>('html');
   const [copiedFrom, setCopiedFrom] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   if (isLoading) {
     return (
@@ -41,17 +46,43 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
     setTimeout(() => setCopiedFrom(false), 2000);
   };
 
+  const handleToggleSave = async () => {
+    setIsSaving(true);
+    try {
+      const result = await api.toggleSaveMessage(token, String(message.id), sessionToken);
+      onSaveToggled(String(message.id), result.saved);
+    } catch { /* ignore */ }
+    finally { setIsSaving(false); }
+  };
+
   return (
     <article className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900 overflow-hidden">
       {/* Meta header */}
       <div className="p-4 border-b border-surface-200 dark:border-surface-800">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1 text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline mb-2 lg:hidden"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Volver
-        </button>
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline lg:hidden"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Volver
+          </button>
+
+          {/* Save button */}
+          <button
+            onClick={handleToggleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              message.is_saved
+                ? 'bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300'
+                : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+            } disabled:opacity-40`}
+            title={message.is_saved ? 'Quitar de guardados' : 'Guardar correo'}
+          >
+            <Bookmark className={`h-3.5 w-3.5 ${message.is_saved ? 'fill-current' : ''}`} />
+            <span>{message.is_saved ? 'Guardado' : 'Guardar'}</span>
+          </button>
+        </div>
 
         <h2 className="text-base font-semibold text-surface-900 dark:text-surface-50 mb-2 text-balance leading-snug">
           {message.subject || '(Sin asunto)'}
@@ -119,7 +150,6 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
               <Paperclip className="h-3 w-3" />
               Adjuntos ({message.attachments.length})
             </h4>
-
             <div className="space-y-1.5">
               {message.attachments.map((att) => {
                 const downloadUrl = api.getAttachmentUrl(token, att.id);

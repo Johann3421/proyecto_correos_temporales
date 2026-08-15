@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, RotateCw, QrCode, Trash2, Clock, Plus, Pencil, RefreshCw } from 'lucide-react';
+import { Copy, Check, RotateCw, QrCode, Trash2, Clock, Plus, Pencil, RefreshCw, Send } from 'lucide-react';
 import { InboxData } from '../services/api';
 import { formatRemainingTime } from '../utils/formatters';
 
@@ -13,6 +13,7 @@ interface EmailCardProps {
   onDelete: () => void;
   onOpenQR: () => void;
   onExtendTime: (minutes: number) => void;
+  onSendTest: () => void;
   isLoading: boolean;
 }
 
@@ -26,6 +27,7 @@ export const EmailCard: React.FC<EmailCardProps> = ({
   onDelete,
   onOpenQR,
   onExtendTime,
+  onSendTest,
   isLoading,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -194,6 +196,15 @@ export const EmailCard: React.FC<EmailCardProps> = ({
             title="Código QR"
           >
             <QrCode className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onSendTest}
+            disabled={isLoading || !inbox}
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-accent-700 dark:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 transition-colors disabled:opacity-40"
+            title="Enviar correo de prueba"
+          >
+            <Send className="h-3 w-3" />
+            Prueba
           </button>
           <button
             onClick={onRefresh}

@@ -38,6 +38,10 @@ class Message(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     raw_size_kb: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
+    # Save / history feature
+    is_saved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    saved_by_session: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, default=None)
+
     inbox: Mapped["Inbox"] = relationship("Inbox", back_populates="messages")
     attachments: Mapped[List["Attachment"]] = relationship(
         "Attachment", back_populates="message", cascade="all, delete-orphan", passive_deletes=True
