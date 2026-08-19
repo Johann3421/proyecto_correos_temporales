@@ -2,6 +2,27 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+// Create a dedicated Axios instance with strict cache-busting
+const http = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  },
+});
+
+// Request interceptor to append dynamic timestamp preventing HTTP disk/memory cache
+http.interceptors.request.use((config) => {
+  if (config.method === 'get') {
+    config.params = {
+      ...config.params,
+      _t: Date.now(),
+    };
+  }
+  return config;
+});
+
 export interface InboxData {
   id: string;
   email_address: string;
@@ -103,74 +124,75 @@ export interface VerifyResponse {
 export const api = {
   // Auth
   async login(username: string, password: string): Promise<LoginResponse> {
-    const res = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/login`, { username, password });
+    const res = await http.post<LoginResponse>('/auth/login', { username, password });
     return res.data;
   },
   async verifySession(token: string): Promise<VerifyResponse> {
-    const res = await axios.get<VerifyResponse>(`${API_BASE_URL}/auth/verify/${token}`);
+    const res = await http.get<VerifyResponse>(`/auth/verify/${token}`);
     return res.data;
   },
   async logout(token: string): Promise<void> {
-    await axios.post(`${API_BASE_URL}/auth/logout/${token}`);
+    await http.post(`/auth/logout/${token}`);
   },
 
   // Inbox & Multi-inbox
   async getDomains(): Promise<string[]> {
-    const res = await axios.get<{ domains: string[] }>(`${API_BASE_URL}/inbox/domains`);
+    const res = await http.get<{ domains: string[] }>('/inbox/domains');
     return res.data.domains;
   },
-  async createInbox(domain?: string, customPrefix?: string, label?: string, sessionToken?: string): Promise<InboxData> {
-    const res = await axios.post<InboxData>(`${API_BASE_URL}/inbox`, {
+  async createInbox(domain?: string, customPrefix?: string, label?: string, sessionToken?: string, useSubdomain?: boolean): Promise<InboxData> {
+    const res = await http.post<InboxData>('/inbox', {
       domain,
       custom_prefix: customPrefix,
       label,
       session_token: sessionToken,
+      use_subdomain: useSubdomain,
     });
     return res.data;
   },
   async listUserInboxes(sessionToken: string): Promise<InboxData[]> {
-    const res = await axios.get<InboxData[]>(`${API_BASE_URL}/inbox/user/${sessionToken}/list`);
+    const res = await http.get<InboxData[]>(`/inbox/user/${sessionToken}/list`);
     return res.data;
   },
   async getInboxStatus(token: string): Promise<InboxData> {
-    const res = await axios.get<InboxData>(`${API_BASE_URL}/inbox/${token}`);
+    const res = await http.get<InboxData>(`/inbox/${token}`);
     return res.data;
   },
   async renameInbox(token: string, label: string): Promise<InboxData> {
-    const res = await axios.patch<InboxData>(`${API_BASE_URL}/inbox/${token}/label`, { label });
+    const res = await http.patch<InboxData>(`/inbox/${token}/label`, { label });
     return res.data;
   },
   async updateForwarding(token: string, forwardTo: string, enabled: boolean): Promise<InboxData> {
-    const res = await axios.put<InboxData>(`${API_BASE_URL}/inbox/${token}/forward`, {
+    const res = await http.put<InboxData>(`/inbox/${token}/forward`, {
       forward_to: forwardTo,
       forward_enabled: enabled,
     });
     return res.data;
   },
   async deleteInbox(token: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/inbox/${token}`);
+    await http.delete(`/inbox/${token}`);
   },
 
   // Rules & Filters
   async getInboxRules(token: string): Promise<InboxRule[]> {
-    const res = await axios.get<InboxRule[]>(`${API_BASE_URL}/inbox/${token}/rules`);
+    const res = await http.get<InboxRule[]>(`/inbox/${token}/rules`);
     return res.data;
   },
   async createInboxRule(token: string, rule: { rule_type: string; pattern: string; action: string }): Promise<InboxRule> {
-    const res = await axios.post<InboxRule>(`${API_BASE_URL}/inbox/${token}/rules`, rule);
+    const res = await http.post<InboxRule>(`/inbox/${token}/rules`, rule);
     return res.data;
   },
   async deleteInboxRule(token: string, ruleId: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/inbox/${token}/rules/${ruleId}`);
+    await http.delete(`/inbox/${token}/rules/${ruleId}`);
   },
 
   // Messages
   async getMessages(token: string): Promise<MessageSummary[]> {
-    const res = await axios.get<MessageSummary[]>(`${API_BASE_URL}/inbox/${token}/messages`);
+    const res = await http.get<MessageSummary[]>(`/inbox/${token}/messages`);
     return res.data;
   },
   async getMessageDetail(token: string, messageId: string): Promise<MessageDetail> {
-    const res = await axios.get<MessageDetail>(`${API_BASE_URL}/inbox/${token}/messages/${messageId}`);
+    const res = await http.get<MessageDetail>(`/inbox/${token}/messages/${messageId}`);
     return res.data;
   },
   getAttachmentUrl(token: string, attachmentId: string): string {
@@ -185,29 +207,29 @@ export const api = {
 
   // Save / history
   async toggleSaveMessage(inboxToken: string, messageId: string, sessionToken: string): Promise<{ saved: boolean }> {
-    const res = await axios.post(`${API_BASE_URL}/inbox/${inboxToken}/messages/${messageId}/save`, null, {
+    const res = await http.post(`/inbox/${inboxToken}/messages/${messageId}/save`, null, {
       params: { session_token: sessionToken },
     });
     return res.data;
   },
   async getSavedMessages(sessionToken: string): Promise<SavedMessage[]> {
-    const res = await axios.get<SavedMessage[]>(`${API_BASE_URL}/inbox/saved/${sessionToken}`);
+    const res = await http.get<SavedMessage[]>(`/inbox/saved/${sessionToken}`);
     return res.data;
   },
 
   // Test email
   async sendTestEmail(token: string): Promise<{ message: string; id: string }> {
-    const res = await axios.post(`${API_BASE_URL}/inbox/${token}/test`);
+    const res = await http.post(`/inbox/${token}/test`);
     return res.data;
   },
 
   // Stats & Support
   async getUserStats(sessionToken: string): Promise<StatsData> {
-    const res = await axios.get<StatsData>(`${API_BASE_URL}/inbox/stats/${sessionToken}`);
+    const res = await http.get<StatsData>(`/inbox/stats/${sessionToken}`);
     return res.data;
   },
   async submitSupport(data: { name: string; email: string; subject: string; message: string; session_token?: string }): Promise<any> {
-    const res = await axios.post(`${API_BASE_URL}/inbox/support`, data);
+    const res = await http.post('/inbox/support', data);
     return res.data;
   },
 };

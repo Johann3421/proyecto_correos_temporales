@@ -15,7 +15,7 @@ export function useInbox(sessionToken?: string) {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const initStartedRef = useRef(false);
+  const prevSessionRef = useRef<string | undefined>(sessionToken);
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -27,12 +27,12 @@ export function useInbox(sessionToken?: string) {
     api
       .getDomains()
       .then((list) => {
-        const resolved = list.length > 0 ? list : ['correos.abadgroup.tech'];
+        const resolved = list.length > 0 ? list : ['correos.abadgroup.tech', 'abadgroup.tech'];
         setDomains(resolved);
         setSelectedDomain(resolved[0]);
       })
       .catch(() => {
-        setDomains(['correos.abadgroup.tech']);
+        setDomains(['correos.abadgroup.tech', 'abadgroup.tech']);
         setSelectedDomain('correos.abadgroup.tech');
       });
   }, []);
@@ -55,7 +55,6 @@ export function useInbox(sessionToken?: string) {
       setInboxes(list);
 
       if (list.length > 0) {
-        // Pick preferred or first
         const target = list.find((i) => i.access_token === preferredToken) || list[0];
         setActiveInbox(target);
         localStorage.setItem(STORAGE_KEY, target.access_token);
@@ -66,21 +65,27 @@ export function useInbox(sessionToken?: string) {
     }
   }, [sessionToken, fetchInboxMessages]);
 
-  // Initial initialization
+  // Handle initialization and session changes
   useEffect(() => {
-    if (!selectedDomain || initStartedRef.current) return;
-    initStartedRef.current = true;
+    if (!selectedDomain) return;
+
+    // Detect if user switched accounts
+    const isNewSession = prevSessionRef.current !== sessionToken;
+    prevSessionRef.current = sessionToken;
 
     const savedToken = localStorage.getItem(STORAGE_KEY);
 
     const init = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         if (sessionToken) {
           const list = await api.listUserInboxes(sessionToken);
           setInboxes(list);
           if (list.length > 0) {
-            const target = list.find((i) => i.access_token === savedToken) || list[0];
+            const target = (!isNewSession && savedToken) 
+              ? (list.find((i) => i.access_token === savedToken) || list[0])
+              : list[0];
             setActiveInbox(target);
             localStorage.setItem(STORAGE_KEY, target.access_token);
             await fetchInboxMessages(target.access_token);
@@ -93,10 +98,19 @@ export function useInbox(sessionToken?: string) {
             setMessages([]);
           }
         } else if (savedToken) {
-          const status = await api.getInboxStatus(savedToken);
-          setInboxes([status]);
-          setActiveInbox(status);
-          await fetchInboxMessages(status.access_token);
+          try {
+            const status = await api.getInboxStatus(savedToken);
+            setInboxes([status]);
+            setActiveInbox(status);
+            await fetchInboxMessages(status.access_token);
+          } catch {
+            localStorage.removeItem(STORAGE_KEY);
+            const newInbox = await api.createInbox(selectedDomain);
+            setInboxes([newInbox]);
+            setActiveInbox(newInbox);
+            localStorage.setItem(STORAGE_KEY, newInbox.access_token);
+            setMessages([]);
+          }
         } else {
           const newInbox = await api.createInbox(selectedDomain);
           setInboxes([newInbox]);
@@ -105,7 +119,6 @@ export function useInbox(sessionToken?: string) {
           setMessages([]);
         }
       } catch {
-        // Fallback to fresh inbox
         try {
           const newInbox = await api.createInbox(selectedDomain, undefined, undefined, sessionToken);
           setInboxes([newInbox]);
@@ -113,7 +126,7 @@ export function useInbox(sessionToken?: string) {
           localStorage.setItem(STORAGE_KEY, newInbox.access_token);
           setMessages([]);
         } catch {
-          setError('Error al generar la bandeja de entrada');
+          setError('Error al conectar con la bandeja de entrada');
         }
       } finally {
         setIsLoading(false);
@@ -125,12 +138,12 @@ export function useInbox(sessionToken?: string) {
 
   // Create new / additional inbox
   const createNewInbox = useCallback(
-    async (domainOverride?: string, customPrefix?: string, label?: string) => {
+    async (domainOverride?: string, customPrefix?: string, label?: string, useSubdomain?: boolean) => {
       setIsLoading(true);
       setError(null);
       try {
         const domainToUse = domainOverride || selectedDomain || 'correos.abadgroup.tech';
-        const data = await api.createInbox(domainToUse, customPrefix, label, sessionToken);
+        const data = await api.createInbox(domainToUse, customPrefix, label, sessionToken, useSubdomain);
         setInboxes((prev) => [data, ...prev.filter((i) => i.id !== data.id)]);
         setActiveInbox(data);
         setMessages([]);
@@ -192,7 +205,6 @@ export function useInbox(sessionToken?: string) {
           localStorage.setItem(STORAGE_KEY, next.access_token);
           await fetchInboxMessages(next.access_token);
         } else {
-          // Generate replacement
           const replacement = await api.createInbox(selectedDomain, undefined, undefined, sessionToken);
           setInboxes([replacement]);
           setActiveInbox(replacement);
@@ -214,7 +226,10 @@ export function useInbox(sessionToken?: string) {
     (payload: any) => {
       if (payload.type === 'NEW_MESSAGE' && payload.message) {
         const newMsg: MessageSummary = payload.message;
-        setMessages((prev) => [newMsg, ...prev.filter((m) => m.id !== newMsg.id)]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === newMsg.id)) return prev;
+          return [newMsg, ...prev];
+        });
         playNotificationSound();
 
         const ruleTag = payload.message.matched_rules?.length
@@ -222,7 +237,6 @@ export function useInbox(sessionToken?: string) {
           : '';
         triggerToast(`Tienes correo nuevo${ruleTag}`);
 
-        // Update unread count for current inbox
         if (activeInbox) {
           setInboxes((prev) =>
             prev.map((i) =>
@@ -240,13 +254,13 @@ export function useInbox(sessionToken?: string) {
     onMessage: handleWsMessage,
   });
 
-  // Fallback sync (15s) and on tab visibility focus
+  // Real-time automatic background polling (every 4 seconds) + focus sync
   useEffect(() => {
     if (!activeInbox || !activeInbox.access_token || !activeInbox.is_active) return;
 
     const token = activeInbox.access_token;
 
-    const silentSync = async () => {
+    const autoSync = async () => {
       try {
         const msgs = await api.getMessages(token);
         setMessages((prev) => {
@@ -264,18 +278,20 @@ export function useInbox(sessionToken?: string) {
       }
     };
 
-    const pollInterval = setInterval(silentSync, 15000);
+    // Poll every 4 seconds for instant delivery guarantee
+    const pollInterval = setInterval(autoSync, 4000);
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        silentSync();
-      }
+    const handleFocusSync = () => {
+      autoSync();
     };
-    window.addEventListener('visibilitychange', handleVisibilityChange);
+
+    window.addEventListener('focus', handleFocusSync);
+    window.addEventListener('visibilitychange', handleFocusSync);
 
     return () => {
       clearInterval(pollInterval);
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocusSync);
+      window.removeEventListener('visibilitychange', handleFocusSync);
     };
   }, [activeInbox?.access_token, activeInbox?.is_active, triggerToast]);
 
