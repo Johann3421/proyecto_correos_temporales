@@ -9,6 +9,9 @@ class InboxCreateRequest(BaseModel):
     label: Optional[str] = None
     session_token: Optional[str] = None
 
+class ExtendInboxRequest(BaseModel):
+    pass
+
 class InboxResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
