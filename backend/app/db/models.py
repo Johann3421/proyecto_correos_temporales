@@ -22,9 +22,46 @@ class Inbox(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=far_future, index=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Multi-inbox & Customization
+    session_owner: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Auto-Forwarding
+    forward_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    forward_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+
     messages: Mapped[List["Message"]] = relationship(
         "Message", back_populates="inbox", cascade="all, delete-orphan", passive_deletes=True
     )
+    rules: Mapped[List["InboxRule"]] = relationship(
+        "InboxRule", back_populates="inbox", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+class InboxRule(Base):
+    __tablename__ = "inbox_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    inbox_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("inboxes.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 'domain', 'subject', 'from'
+    pattern: Mapped[str] = mapped_column(String(255), nullable=False)   # e.g., 'netflix.com' or 'código'
+    action: Mapped[str] = mapped_column(String(50), default="notify_only", nullable=False) # 'notify_only', 'auto_save', 'forward'
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    inbox: Mapped["Inbox"] = relationship("Inbox", back_populates="rules")
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 class Message(Base):
     __tablename__ = "messages"

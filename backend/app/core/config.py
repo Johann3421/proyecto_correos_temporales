@@ -36,7 +36,19 @@ class Settings(BaseSettings):
     SMTP_HOST: str = os.getenv("SMTP_HOST", "0.0.0.0")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "2525"))
     
+    # Outbound Email Forwarding (Relay to Gmail/Outlook)
+    FORWARD_SMTP_HOST: str = os.getenv("FORWARD_SMTP_HOST", "")
+    FORWARD_SMTP_PORT: int = int(os.getenv("FORWARD_SMTP_PORT", "587"))
+    FORWARD_SMTP_USER: str = os.getenv("FORWARD_SMTP_USER", "")
+    FORWARD_SMTP_PASSWORD: str = os.getenv("FORWARD_SMTP_PASSWORD", "")
+    FORWARD_SMTP_USE_TLS: bool = os.getenv("FORWARD_SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    FORWARD_FROM_EMAIL: str = os.getenv("FORWARD_FROM_EMAIL", "relay@correos.abadgroup.tech")
+    
+    # Support
+    SUPPORT_NOTIFICATION_EMAIL: str = os.getenv("SUPPORT_NOTIFICATION_EMAIL", "support@abadgroup.tech")
+
     # Limits
+    MAX_INBOXES_PER_USER: int = int(os.getenv("MAX_INBOXES_PER_USER", "10"))
     MAX_ATTACHMENT_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
     MAX_MESSAGES_PER_INBOX: int = 100
     
