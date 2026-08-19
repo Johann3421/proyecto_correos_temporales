@@ -20,12 +20,6 @@ from app.api.websocket import ws_manager
 router = APIRouter(prefix="/inbox", tags=["Inbox"])
 
 
-def calculate_remaining_seconds(expires_at: datetime) -> int:
-    now = datetime.now(timezone.utc)
-    diff = int((expires_at - now).total_seconds())
-    return max(0, diff)
-
-
 def inbox_to_response(inbox: Inbox) -> InboxResponse:
     return InboxResponse(
         id=inbox.id,
@@ -34,7 +28,7 @@ def inbox_to_response(inbox: Inbox) -> InboxResponse:
         created_at=inbox.created_at,
         expires_at=inbox.expires_at,
         is_active=inbox.is_active,
-        remaining_seconds=calculate_remaining_seconds(inbox.expires_at),
+        remaining_seconds=0,
     )
 
 
@@ -117,7 +111,7 @@ async def create_inbox(
         email_address=email_address,
         access_token=generate_access_token(),
         created_at=now,
-        expires_at=now + timedelta(minutes=settings.DEFAULT_EXPIRATION_MINUTES),
+        expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
         is_active=True,
     )
     db.add(inbox)
@@ -128,15 +122,15 @@ async def create_inbox(
 
 @router.get("/{token}", response_model=InboxResponse)
 async def get_inbox_status(token: str, db: AsyncSession = Depends(get_db)):
-    """Get inbox info and remaining lifetime."""
+    """Get inbox info."""
     stmt = select(Inbox).where(Inbox.access_token == token, Inbox.is_active == True)  # noqa: E712
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
 
-    if not inbox or inbox.expires_at < datetime.now(timezone.utc):
+    if not inbox:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bandeja no encontrada o expirada",
+            detail="Bandeja no encontrada",
         )
     return inbox_to_response(inbox)
 
@@ -148,7 +142,7 @@ async def get_inbox_messages(token: str, db: AsyncSession = Depends(get_db)):
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
 
-    if not inbox or inbox.expires_at < datetime.now(timezone.utc):
+    if not inbox:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Bandeja no encontrada"
         )
@@ -186,7 +180,7 @@ async def get_message_detail(
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
 
-    if not inbox or inbox.expires_at < datetime.now(timezone.utc):
+    if not inbox:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Bandeja no encontrada"
         )
@@ -266,8 +260,8 @@ async def send_test_email(token: str, db: AsyncSession = Depends(get_db)):
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
 
-    if not inbox or inbox.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=404, detail="Bandeja no encontrada o expirada")
+    if not inbox:
+        raise HTTPException(status_code=404, detail="Bandeja no encontrada")
 
     now = datetime.now(timezone.utc)
     test_msg = Message(
@@ -310,6 +304,7 @@ async def send_test_email(token: str, db: AsyncSession = Depends(get_db)):
         raw_size_kb=1.2,
         is_read=False,
     )
+
     db.add(test_msg)
     await db.flush()
     await db.commit()
@@ -338,23 +333,16 @@ async def send_test_email(token: str, db: AsyncSession = Depends(get_db)):
 async def extend_inbox_lifetime(
     token: str, payload: ExtendInboxRequest, db: AsyncSession = Depends(get_db)
 ):
-    """Extend inbox expiration time."""
+    """Keep active status for inbox."""
     stmt = select(Inbox).where(Inbox.access_token == token, Inbox.is_active == True)  # noqa: E712
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
 
-    if not inbox or inbox.expires_at < datetime.now(timezone.utc):
+    if not inbox:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Bandeja no encontrada"
         )
 
-    added_minutes = max(1, min(1440, payload.minutes))
-    base_time = max(inbox.expires_at, datetime.now(timezone.utc))
-    inbox.expires_at = base_time + timedelta(minutes=added_minutes)
-    inbox.is_active = True
-
-    await db.commit()
-    await db.refresh(inbox)
     return inbox_to_response(inbox)
 
 

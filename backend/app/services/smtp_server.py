@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from aiosmtpd.smtp import SMTP
 from sqlalchemy import select
 from app.core.config import settings
@@ -30,13 +30,13 @@ class CustomSMTPHandler:
 
         async with AsyncSessionLocal() as db:
             for rcpt in rcpt_tos:
-                clean_rcpt = rcpt.strip().lower()
+                # Robustly clean email (remove angle brackets if present and lowercase)
+                clean_rcpt = rcpt.strip().lower().strip("<>").strip()
 
-                # Find active, non-expired inbox
+                # Find active inbox (permanent until user explicitly changes/deletes it)
                 stmt = select(Inbox).where(
                     Inbox.email_address == clean_rcpt,
                     Inbox.is_active == True,  # noqa: E712
-                    Inbox.expires_at > datetime.now(timezone.utc),
                 )
                 result = await db.execute(stmt)
                 inbox = result.scalar_one_or_none()

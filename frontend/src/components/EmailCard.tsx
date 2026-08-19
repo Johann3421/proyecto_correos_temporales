@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Copy, Check, RotateCw, QrCode, Trash2, Clock, Plus, Pencil, RefreshCw, Send } from 'lucide-react';
+import { Copy, Check, RotateCw, QrCode, Trash2, Pencil, RefreshCw, Send } from 'lucide-react';
 import { InboxData } from '../services/api';
-import { formatRemainingTime } from '../utils/formatters';
 
 interface EmailCardProps {
   inbox: InboxData | null;
@@ -12,7 +11,6 @@ interface EmailCardProps {
   onRefresh: () => void;
   onDelete: () => void;
   onOpenQR: () => void;
-  onExtendTime: (minutes: number) => void;
   onSendTest: () => void;
   isLoading: boolean;
 }
@@ -26,7 +24,6 @@ export const EmailCard: React.FC<EmailCardProps> = ({
   onRefresh,
   onDelete,
   onOpenQR,
-  onExtendTime,
   onSendTest,
   isLoading,
 }) => {
@@ -48,14 +45,6 @@ export const EmailCard: React.FC<EmailCardProps> = ({
     setIsEditingAlias(false);
     setCustomPrefix('');
   };
-
-  const remaining = inbox?.remaining_seconds || 0;
-  const totalSeconds = inbox
-    ? Math.max(1, Math.round((new Date(inbox.expires_at).getTime() - new Date(inbox.created_at).getTime()) / 1000))
-    : 1;
-  const pct = Math.min(100, Math.max(0, (remaining / totalSeconds) * 100));
-  const isLow = remaining > 0 && remaining < 120;
-  const isCritical = remaining > 0 && remaining < 30;
 
   return (
     <section className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900 p-4 sm:p-5">
@@ -106,43 +95,6 @@ export const EmailCard: React.FC<EmailCardProps> = ({
           <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
         </button>
       </div>
-
-      {/* Timer bar */}
-      {inbox && remaining > 0 && (
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="flex items-center gap-1 text-2xs text-surface-500">
-              <Clock className="h-3 w-3" />
-              <span className={`font-mono font-medium ${isCritical ? 'text-fail-light dark:text-fail-dark' : isLow ? 'text-warn-light dark:text-warn-dark' : 'text-surface-700 dark:text-surface-200'}`}>
-                {formatRemainingTime(remaining)}
-              </span>
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onExtendTime(10)}
-                className="text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline"
-              >
-                +10m
-              </button>
-              <span className="text-surface-300 dark:text-surface-700">·</span>
-              <button
-                onClick={() => onExtendTime(60)}
-                className="text-2xs font-medium text-accent-700 dark:text-accent-400 hover:underline"
-              >
-                +1h
-              </button>
-            </div>
-          </div>
-          <div className="h-1 w-full rounded-full bg-surface-200 dark:bg-surface-800 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
-                isCritical ? 'bg-fail-DEFAULT' : isLow ? 'bg-warn-DEFAULT' : 'bg-accent-600'
-              }`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Custom alias form */}
       {isEditingAlias && (

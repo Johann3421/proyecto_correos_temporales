@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     # Enable dynamic wildcard subdomains (e.g. user@x7k.correos.abadgroup.tech)
     ENABLE_RANDOM_SUBDOMAINS: bool = os.getenv("ENABLE_RANDOM_SUBDOMAINS", "true").lower() in ("true", "1", "yes")
     
-    # Expiration Defaults
-    DEFAULT_EXPIRATION_MINUTES: int = 10
-    CLEANUP_INTERVAL_MINUTES: int = 5
+    # Maintenance / Cleanup Interval (Minutes)
+    CLEANUP_INTERVAL_MINUTES: int = int(os.getenv("CLEANUP_INTERVAL_MINUTES", "60"))
     
     # Authentication (Demo User & Admin User)
     AUTH_ENABLED: bool = os.getenv("AUTH_ENABLED", "true").lower() in ("true", "1", "yes")

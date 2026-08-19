@@ -9,6 +9,9 @@ from app.core.database import Base
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+def far_future() -> datetime:
+    return datetime(2099, 1, 1, tzinfo=timezone.utc)
+
 class Inbox(Base):
     __tablename__ = "inboxes"
 
@@ -16,7 +19,7 @@ class Inbox(Base):
     email_address: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     access_token: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=far_future, index=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     messages: Mapped[List["Message"]] = relationship(

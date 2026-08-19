@@ -50,7 +50,6 @@ export function App() {
     isConnected,
     generateNewInbox,
     refreshMessages,
-    extendTime,
     deleteInbox,
     setMessages,
   } = useInbox();
@@ -219,7 +218,6 @@ export function App() {
           onRefresh={refreshMessages}
           onDelete={deleteInbox}
           onOpenQR={() => setIsQRModalOpen(true)}
-          onExtendTime={extendTime}
           onSendTest={handleSendTest}
           isLoading={isLoading}
         />

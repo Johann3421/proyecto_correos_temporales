@@ -16,7 +16,6 @@ export function useInbox() {
 
   const domainsReadyRef = useRef(false);
   const initStartedRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -103,27 +102,46 @@ export function useInbox() {
     onMessage: handleWsMessage,
   });
 
-  // Countdown timer
+  // Fallback background polling & tab-focus sync
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (!inbox || inbox.remaining_seconds <= 0) return;
+    if (!inbox || !inbox.access_token || !inbox.is_active) return;
 
-    timerRef.current = setInterval(() => {
-      setInbox((prev) => {
-        if (!prev) return null;
-        const newSecs = prev.remaining_seconds - 1;
-        if (newSecs <= 0) {
-          triggerToast('Tu correo ha expirado');
-          return { ...prev, remaining_seconds: 0, is_active: false };
-        }
-        return { ...prev, remaining_seconds: newSecs };
-      });
-    }, 1000);
+    const token = inbox.access_token;
+
+    const silentSync = async () => {
+      try {
+        const msgs = await api.getMessages(token);
+        setMessages((prev) => {
+          const currentIds = new Set(prev.map((m) => m.id));
+          const hasNew = msgs.some((m) => !currentIds.has(m.id));
+          if (hasNew) {
+            playNotificationSound();
+            triggerToast('Has recibido un mensaje nuevo');
+            return msgs;
+          }
+          return prev.length !== msgs.length ? msgs : prev;
+        });
+      } catch {
+        // silent fail on network blip
+      }
+    };
+
+    // Poll every 10 seconds as a fallback to WebSocket
+    const pollInterval = setInterval(silentSync, 10000);
+
+    // Sync immediately when user refocuses or switches back to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        silentSync();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      clearInterval(pollInterval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [inbox?.access_token, inbox?.expires_at, triggerToast]);
+  }, [inbox?.access_token, inbox?.is_active, triggerToast]);
 
   const refreshMessages = useCallback(async () => {
     if (!inbox) return;
@@ -135,20 +153,6 @@ export function useInbox() {
       // ignore
     }
   }, [inbox, triggerToast]);
-
-  const extendTime = useCallback(
-    async (minutes: number = 10) => {
-      if (!inbox) return;
-      try {
-        const updated = await api.extendInbox(inbox.access_token, minutes);
-        setInbox(updated);
-        triggerToast(`Tiempo extendido (+${minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`})`);
-      } catch {
-        triggerToast('No se pudo extender el tiempo');
-      }
-    },
-    [inbox, triggerToast],
-  );
 
   const deleteInbox = useCallback(async () => {
     if (!inbox) return;
@@ -175,7 +179,6 @@ export function useInbox() {
     isConnected,
     generateNewInbox,
     refreshMessages,
-    extendTime,
     deleteInbox,
     setMessages,
   };
