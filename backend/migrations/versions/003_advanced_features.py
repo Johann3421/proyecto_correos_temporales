@@ -14,46 +14,48 @@ branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
-    # Add multi-inbox and forwarding columns to inboxes
-    op.add_column('inboxes', sa.Column('session_owner', sa.String(length=128), nullable=True))
-    op.add_column('inboxes', sa.Column('label', sa.String(length=100), nullable=True))
-    op.add_column('inboxes', sa.Column('forward_to', sa.String(length=255), nullable=True))
-    op.add_column('inboxes', sa.Column('forward_enabled', sa.Boolean(), nullable=False, server_default='false'))
-    
-    op.create_index(op.f('idx_inboxes_session_owner'), 'inboxes', ['session_owner'], unique=False)
+    conn = op.get_bind()
 
-    # Create inbox_rules table
-    op.create_table(
-        'inbox_rules',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('inbox_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('rule_type', sa.String(length=50), nullable=False),
-        sa.Column('pattern', sa.String(length=255), nullable=False),
-        sa.Column('action', sa.String(length=50), nullable=False, server_default='notify_only'),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['inbox_id'], ['inboxes.id'], ondelete='CASCADE'),
-    )
-    op.create_index(op.f('idx_rules_inbox_id'), 'inbox_rules', ['inbox_id'], unique=False)
+    # Safe column additions on inboxes
+    conn.execute(sa.text("ALTER TABLE inboxes ADD COLUMN IF NOT EXISTS session_owner VARCHAR(128);"))
+    conn.execute(sa.text("ALTER TABLE inboxes ADD COLUMN IF NOT EXISTS label VARCHAR(100);"))
+    conn.execute(sa.text("ALTER TABLE inboxes ADD COLUMN IF NOT EXISTS forward_to VARCHAR(255);"))
+    conn.execute(sa.text("ALTER TABLE inboxes ADD COLUMN IF NOT EXISTS forward_enabled BOOLEAN NOT NULL DEFAULT false;"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_inboxes_session_owner ON inboxes (session_owner);"))
 
-    # Create support_tickets table
-    op.create_table(
-        'support_tickets',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('session_token', sa.String(length=128), nullable=True),
-        sa.Column('name', sa.String(length=100), nullable=False),
-        sa.Column('email', sa.String(length=255), nullable=False),
-        sa.Column('subject', sa.String(length=255), nullable=False),
-        sa.Column('message', sa.Text(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    )
+    # Safe creation of inbox_rules table
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS inbox_rules (
+            id UUID PRIMARY KEY,
+            inbox_id UUID NOT NULL REFERENCES inboxes(id) ON DELETE CASCADE,
+            rule_type VARCHAR(50) NOT NULL,
+            pattern VARCHAR(255) NOT NULL,
+            action VARCHAR(50) NOT NULL DEFAULT 'notify_only',
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_rules_inbox_id ON inbox_rules (inbox_id);"))
+
+    # Safe creation of support_tickets table
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS support_tickets (
+            id UUID PRIMARY KEY,
+            session_token VARCHAR(128),
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            subject VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    """))
 
 def downgrade() -> None:
-    op.drop_table('support_tickets')
-    op.drop_index(op.f('idx_rules_inbox_id'), table_name='inbox_rules')
-    op.drop_table('inbox_rules')
-    op.drop_index(op.f('idx_inboxes_session_owner'), table_name='inboxes')
-    op.drop_column('inboxes', 'forward_enabled')
-    op.drop_column('inboxes', 'forward_to')
-    op.drop_column('inboxes', 'label')
-    op.drop_column('inboxes', 'session_owner')
+    conn = op.get_bind()
+    conn.execute(sa.text("DROP TABLE IF EXISTS support_tickets;"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS inbox_rules;"))
+    conn.execute(sa.text("DROP INDEX IF EXISTS idx_inboxes_session_owner;"))
+    conn.execute(sa.text("ALTER TABLE inboxes DROP COLUMN IF EXISTS forward_enabled;"))
+    conn.execute(sa.text("ALTER TABLE inboxes DROP COLUMN IF EXISTS forward_to;"))
+    conn.execute(sa.text("ALTER TABLE inboxes DROP COLUMN IF EXISTS label;"))
+    conn.execute(sa.text("ALTER TABLE inboxes DROP COLUMN IF EXISTS session_owner;"))
