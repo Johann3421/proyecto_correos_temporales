@@ -1,5 +1,6 @@
+import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import secrets
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Active session in-memory store
 # token -> { "username": str, "role": str, "expires_at": datetime }
-ACTIVE_SESSIONS: dict[str, dict] = {}
+ACTIVE_SESSIONS: Dict[str, dict] = {}
 
 class LoginRequest(BaseModel):
     username: str
@@ -36,36 +37,75 @@ def clean_expired_sessions():
     for t in expired:
         del ACTIVE_SESSIONS[t]
 
+def get_valid_accounts() -> Dict[str, dict]:
+    """
+    Returns a dictionary of valid username -> { password, role, lifespan_hours }
+    Includes admin, admin2, johan, demo, and any custom accounts defined in AUTH_USERS.
+    """
+    accounts = {
+        settings.ADMIN_USER.lower(): {
+            "password": settings.ADMIN_PASSWORD,
+            "role": "admin",
+            "lifespan_hours": settings.ADMIN_SESSION_LIFESPAN_HOURS,
+        },
+        "admin2": {
+            "password": os.getenv("ADMIN2_PASSWORD", "admin12345"),
+            "role": "admin",
+            "lifespan_hours": settings.ADMIN_SESSION_LIFESPAN_HOURS,
+        },
+        "johan": {
+            "password": os.getenv("JOHAN_PASSWORD", "johan1234"),
+            "role": "admin",
+            "lifespan_hours": settings.ADMIN_SESSION_LIFESPAN_HOURS,
+        },
+        settings.DEMO_USER.lower(): {
+            "password": settings.DEMO_PASSWORD,
+            "role": "demo",
+            "lifespan_hours": max(1, settings.SESSION_LIFESPAN_MINUTES // 60),
+        },
+    }
+
+    # Support custom env-defined accounts: AUTH_USERS="user1:pass1:admin,user2:pass2:demo"
+    auth_users_env = os.getenv("AUTH_USERS", "")
+    if auth_users_env:
+        for entry in auth_users_env.split(","):
+            parts = entry.strip().split(":")
+            if len(parts) >= 2:
+                u = parts[0].strip().lower()
+                p = parts[1].strip()
+                r = parts[2].strip().lower() if len(parts) > 2 else "user"
+                accounts[u] = {
+                    "password": p,
+                    "role": r,
+                    "lifespan_hours": settings.ADMIN_SESSION_LIFESPAN_HOURS if r == "admin" else 2,
+                }
+
+    return accounts
+
 @router.post("/login", response_model=LoginResponse)
 async def login(payload: LoginRequest):
-    """Authenticate with username and password (Supports demo / demo1234 and admin / admin1234)."""
+    """Authenticate with username and password (Supports admin, admin2, johan, demo)."""
     clean_expired_sessions()
     
     username = payload.username.strip().lower()
     password = payload.password
     
-    role = None
-    lifespan_minutes = settings.SESSION_LIFESPAN_MINUTES  # default 60 min
+    accounts = get_valid_accounts()
+    account_info = accounts.get(username)
 
-    # Check admin
-    if username == settings.ADMIN_USER.lower() and password == settings.ADMIN_PASSWORD:
-        role = "admin"
-        lifespan_minutes = settings.ADMIN_SESSION_LIFESPAN_HOURS * 60
-    # Check demo
-    elif username == settings.DEMO_USER.lower() and password == settings.DEMO_PASSWORD:
-        role = "demo"
-        lifespan_minutes = settings.SESSION_LIFESPAN_MINUTES
-        
-    if not role:
+    if not account_info or account_info["password"] != password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas."
         )
 
-    # Generate session token
+    role = account_info["role"]
+    lifespan_hours = account_info.get("lifespan_hours", 24)
+
+    # Generate isolated session token
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=lifespan_minutes)
+    expires_at = now + timedelta(hours=lifespan_hours)
     
     ACTIVE_SESSIONS[token] = {
         "username": username,

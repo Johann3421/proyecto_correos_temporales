@@ -35,17 +35,44 @@ class CustomSMTPHandler:
                 # Robustly clean email (remove angle brackets if present and lowercase)
                 clean_rcpt = rcpt.strip().lower().strip("<>").strip()
 
-                # Find active inbox (with rules eager-loaded)
+                # 1. Exact match lookup (case-insensitive)
                 stmt = (
                     select(Inbox)
                     .options(selectinload(Inbox.rules))
                     .where(
-                        Inbox.email_address == clean_rcpt,
                         Inbox.is_active == True,  # noqa: E712
+                        Inbox.email_address.ilike(clean_rcpt),
                     )
                 )
                 result = await db.execute(stmt)
                 inbox = result.scalar_one_or_none()
+
+                # 2. Plus addressing fallback (e.g. user+xyz@domain.com -> user@domain.com)
+                if not inbox and "+" in clean_rcpt and "@" in clean_rcpt:
+                    user_part, domain_part = clean_rcpt.split("@", 1)
+                    base_user = user_part.split("+", 1)[0]
+                    alt_rcpt = f"{base_user}@{domain_part}"
+                    stmt2 = select(Inbox).options(selectinload(Inbox.rules)).where(
+                        Inbox.is_active == True,
+                        Inbox.email_address.ilike(alt_rcpt),
+                    )
+                    res2 = await db.execute(stmt2)
+                    inbox = res2.scalar_one_or_none()
+
+                # 3. Subdomain-agnostic fallback (matches by username across configured domains)
+                if not inbox and "@" in clean_rcpt:
+                    local_user = clean_rcpt.split("@", 1)[0].split("+", 1)[0]
+                    stmt3 = select(Inbox).options(selectinload(Inbox.rules)).where(
+                        Inbox.is_active == True,
+                    ).order_by(Inbox.created_at.desc())
+                    res3 = await db.execute(stmt3)
+                    candidates = res3.scalars().all()
+                    for cand in candidates:
+                        cand_local = cand.email_address.split("@", 1)[0].lower()
+                        if cand_local == local_user:
+                            inbox = cand
+                            logger.info(f"Matched incoming {clean_rcpt} to active inbox {cand.email_address} by local username")
+                            break
 
                 if not inbox:
                     logger.warning(f"No active inbox found for: {clean_rcpt}")

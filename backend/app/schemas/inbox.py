@@ -8,6 +8,7 @@ class InboxCreateRequest(BaseModel):
     custom_prefix: Optional[str] = None
     label: Optional[str] = None
     session_token: Optional[str] = None
+    use_subdomain: Optional[bool] = None
 
 class ExtendInboxRequest(BaseModel):
     pass

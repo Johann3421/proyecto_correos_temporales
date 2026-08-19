@@ -204,7 +204,9 @@ async def create_inbox(
     if not prefix:
         prefix = generate_random_email_prefix()
 
-    if settings.ENABLE_RANDOM_SUBDOMAINS:
+    should_use_subdomain = payload.use_subdomain if payload.use_subdomain is not None else settings.ENABLE_RANDOM_SUBDOMAINS
+
+    if should_use_subdomain:
         subdomain = generate_random_subdomain()
         email_address = f"{prefix}@{subdomain}.{base_domain}"
     else:
@@ -214,7 +216,7 @@ async def create_inbox(
     res = await db.execute(stmt)
     if res.scalar_one_or_none():
         extra = generate_random_email_prefix(4)
-        if settings.ENABLE_RANDOM_SUBDOMAINS:
+        if should_use_subdomain:
             subdomain = generate_random_subdomain()
             email_address = f"{prefix}{extra}@{subdomain}.{base_domain}"
         else:

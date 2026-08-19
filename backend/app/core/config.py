@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
     
     # Domains available for temp emails (comma-separated in env)
-    DOMAINS_STR: str = os.getenv("DOMAINS", "correos.abadgroup.tech")
+    DOMAINS_STR: str = os.getenv("DOMAINS", "correos.abadgroup.tech,abadgroup.tech")
     
     # Enable dynamic wildcard subdomains (e.g. user@x7k.correos.abadgroup.tech)
     ENABLE_RANDOM_SUBDOMAINS: bool = os.getenv("ENABLE_RANDOM_SUBDOMAINS", "true").lower() in ("true", "1", "yes")
