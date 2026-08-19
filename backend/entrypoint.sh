@@ -5,7 +5,7 @@ export PYTHONPATH="/app:$PYTHONPATH"
 
 echo "Checking PostgreSQL connection..."
 python -c "
-import asyncio, os, sys, time
+import asyncio, os, sys
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 
@@ -16,10 +16,11 @@ async def wait_for_db():
             engine = create_async_engine(url)
             async with engine.connect() as conn:
                 await conn.execute(text('SELECT 1'))
+            await engine.dispose()
             print('PostgreSQL is ready!')
             return
         except Exception as e:
-            print(f'Waiting for DB to accept connections ({i+1}/30)...')
+            print(f'Waiting for DB ({i+1}/30): {e}')
             await asyncio.sleep(2)
     print('Could not connect to database after 60s')
     sys.exit(1)

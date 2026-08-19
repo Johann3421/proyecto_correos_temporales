@@ -1,8 +1,15 @@
 import os
 from typing import List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
+
     PROJECT_NAME: str = "TempMail API"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
@@ -58,8 +65,5 @@ class Settings(BaseSettings):
     @property
     def domains(self) -> List[str]:
         return [d.strip() for d in self.DOMAINS_STR.split(",") if d.strip()]
-
-    class Config:
-        case_sensitive = True
 
 settings = Settings()
