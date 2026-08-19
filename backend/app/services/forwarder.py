@@ -1,9 +1,39 @@
 import logging
+import asyncio
 from email.message import EmailMessage
-import aiosmtplib
 from app.core.config import settings
 
 logger = logging.getLogger("tempmail.forwarder")
+
+try:
+    import aiosmtplib
+except ImportError:
+    aiosmtplib = None
+
+import smtplib
+
+
+def _send_sync_smtp(msg: EmailMessage, target_email: str) -> bool:
+    """Fallback synchronous SMTP send via standard library smtplib."""
+    port = settings.FORWARD_SMTP_PORT
+    host = settings.FORWARD_SMTP_HOST
+    user = settings.FORWARD_SMTP_USER
+    password = settings.FORWARD_SMTP_PASSWORD
+
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+            if user and password:
+                server.login(user, password)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            if settings.FORWARD_SMTP_USE_TLS:
+                server.starttls()
+            if user and password:
+                server.login(user, password)
+            server.send_message(msg)
+    return True
+
 
 async def forward_incoming_email(
     target_email: str,
@@ -72,17 +102,21 @@ async def forward_incoming_email(
                         filename=att.get("filename", "adjunto.bin")
                     )
 
-        # Send via aiosmtplib
-        await aiosmtplib.send(
-            msg,
-            hostname=settings.FORWARD_SMTP_HOST,
-            port=settings.FORWARD_SMTP_PORT,
-            username=settings.FORWARD_SMTP_USER or None,
-            password=settings.FORWARD_SMTP_PASSWORD or None,
-            start_tls=settings.FORWARD_SMTP_USE_TLS if settings.FORWARD_SMTP_PORT != 465 else False,
-            use_tls=True if settings.FORWARD_SMTP_PORT == 465 else False,
-            timeout=15
-        )
+        # Try aiosmtplib first, fallback to standard smtplib in thread
+        if aiosmtplib:
+            await aiosmtplib.send(
+                msg,
+                hostname=settings.FORWARD_SMTP_HOST,
+                port=settings.FORWARD_SMTP_PORT,
+                username=settings.FORWARD_SMTP_USER or None,
+                password=settings.FORWARD_SMTP_PASSWORD or None,
+                start_tls=settings.FORWARD_SMTP_USE_TLS if settings.FORWARD_SMTP_PORT != 465 else False,
+                use_tls=True if settings.FORWARD_SMTP_PORT == 465 else False,
+                timeout=15
+            )
+        else:
+            await asyncio.to_thread(_send_sync_smtp, msg, target_email)
+
         logger.info(f"Successfully forwarded email from {inbox_address} to {target_email}")
         return True
     except Exception as e:
