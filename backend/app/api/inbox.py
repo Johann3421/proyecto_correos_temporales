@@ -41,6 +41,8 @@ def inbox_to_response(inbox: Inbox, unread_count: int = 0, total_messages: int =
     )
 
 
+# ==================== STATIC / NON-TOKEN ROUTES ====================
+
 @router.get("/domains", response_model=DomainsResponse)
 async def get_available_domains():
     """List available domains for temp email creation."""
@@ -100,6 +102,89 @@ async def get_saved_messages(session_token: str, db: AsyncSession = Depends(get_
     ]
 
 
+@router.get("/stats/{session_token}", response_model=StatsResponse)
+async def get_user_stats(session_token: str, db: AsyncSession = Depends(get_db)):
+    """Get metrics and usage statistics for user session."""
+    # Inboxes counts
+    inboxes_stmt = select(
+        func.count(Inbox.id).label("total"),
+        func.count(func.nullif(Inbox.is_active, False)).label("active")
+    ).where(Inbox.session_owner == session_token)
+    inboxes_res = await db.execute(inboxes_stmt)
+    inbox_counts = inboxes_res.first()
+    total_inboxes = inbox_counts.total if inbox_counts else 0
+    active_inboxes = inbox_counts.active if inbox_counts else 0
+
+    # Total messages received across inboxes
+    inbox_ids_stmt = select(Inbox.id).where(Inbox.session_owner == session_token)
+    
+    msgs_stmt = select(
+        func.count(Message.id).label("total_msgs"),
+        func.count(func.nullif(Message.is_saved, False)).label("saved_msgs")
+    ).where(Message.inbox_id.in_(inbox_ids_stmt))
+    msgs_res = await db.execute(msgs_stmt)
+    msg_counts = msgs_res.first()
+    total_msgs = msg_counts.total_msgs if msg_counts else 0
+    saved_msgs = msg_counts.saved_msgs if msg_counts else 0
+
+    # Top domains
+    all_from_stmt = select(Message.from_address).where(Message.inbox_id.in_(inbox_ids_stmt))
+    all_from_res = await db.execute(all_from_stmt)
+    from_addresses = all_from_res.scalars().all()
+
+    domain_counts_dict = {}
+    for addr in from_addresses:
+        if "@" in addr:
+            dom = addr.split("@")[-1].strip().lower()
+        else:
+            dom = "otro"
+        domain_counts_dict[dom] = domain_counts_dict.get(dom, 0) + 1
+
+    sorted_domains = sorted(domain_counts_dict.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_senders = [StatsDomainCount(domain=d, count=c) for d, c in sorted_domains]
+
+    # Messages by day (last 7 days)
+    days_dict = {}
+    now = datetime.now(timezone.utc)
+    for i in range(6, -1, -1):
+        day_str = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        days_dict[day_str] = 0
+
+    dates_stmt = select(Message.received_at).where(Message.inbox_id.in_(inbox_ids_stmt))
+    dates_res = await db.execute(dates_stmt)
+    for d in dates_res.scalars().all():
+        d_str = d.strftime("%Y-%m-%d")
+        if d_str in days_dict:
+            days_dict[d_str] += 1
+
+    messages_by_day = [StatsDayCount(date=d, count=c) for d, c in days_dict.items()]
+
+    return StatsResponse(
+        total_inboxes=total_inboxes,
+        active_inboxes=active_inboxes,
+        total_messages_received=total_msgs,
+        saved_messages_count=saved_msgs,
+        top_senders=top_senders,
+        messages_by_day=messages_by_day,
+    )
+
+
+@router.post("/support", response_model=SupportTicketResponse, status_code=status.HTTP_201_CREATED)
+async def submit_support_ticket(payload: SupportTicketCreate, db: AsyncSession = Depends(get_db)):
+    """Submit a user support or feedback ticket."""
+    ticket = SupportTicket(
+        session_token=payload.session_token,
+        name=payload.name.strip()[:100],
+        email=payload.email.strip()[:255],
+        subject=payload.subject.strip()[:255],
+        message=payload.message.strip(),
+    )
+    db.add(ticket)
+    await db.commit()
+    await db.refresh(ticket)
+    return ticket
+
+
 @router.post("", response_model=InboxResponse, status_code=status.HTTP_201_CREATED)
 async def create_inbox(
     payload: InboxCreateRequest = None, db: AsyncSession = Depends(get_db)
@@ -115,19 +200,16 @@ async def create_inbox(
         if payload.custom_prefix
         else generate_random_email_prefix()
     )
-    # Keep only safe characters
     prefix = "".join(c for c in prefix if c.isalnum() or c in [".", "_", "-"])
     if not prefix:
         prefix = generate_random_email_prefix()
 
-    # Build email address with optional dynamic subdomain
     if settings.ENABLE_RANDOM_SUBDOMAINS:
         subdomain = generate_random_subdomain()
         email_address = f"{prefix}@{subdomain}.{base_domain}"
     else:
         email_address = f"{prefix}@{base_domain}"
 
-    # Ensure address uniqueness
     stmt = select(Inbox).where(Inbox.email_address == email_address)
     res = await db.execute(stmt)
     if res.scalar_one_or_none():
@@ -153,6 +235,8 @@ async def create_inbox(
     await db.refresh(inbox)
     return inbox_to_response(inbox)
 
+
+# ==================== PARAMETERIZED /{token} ROUTES ====================
 
 @router.get("/{token}", response_model=InboxResponse)
 async def get_inbox_status(token: str, db: AsyncSession = Depends(get_db)):
@@ -210,8 +294,6 @@ async def update_forwarding(token: str, payload: InboxForwardRequest, db: AsyncS
     return inbox_to_response(inbox)
 
 
-# ==================== RULES & FILTERS ====================
-
 @router.get("/{token}/rules", response_model=List[InboxRuleResponse])
 async def get_inbox_rules(token: str, db: AsyncSession = Depends(get_db)):
     """List all custom filter rules for this inbox."""
@@ -228,7 +310,7 @@ async def get_inbox_rules(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{token}/rules", response_model=InboxRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_inbox_rule(token: str, payload: InboxRuleCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new filter rule (e.g. notify or auto-save on specific domain/word)."""
+    """Create a new filter rule."""
     stmt = select(Inbox).where(Inbox.access_token == token, Inbox.is_active == True)
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
@@ -267,8 +349,6 @@ async def delete_inbox_rule(token: str, rule_id: str, db: AsyncSession = Depends
     await db.commit()
     return {"message": "Regla eliminada"}
 
-
-# ==================== MESSAGES ====================
 
 @router.get("/{token}/messages", response_model=List[MessageSummary])
 async def get_inbox_messages(token: str, db: AsyncSession = Depends(get_db)):
@@ -364,7 +444,7 @@ async def get_message_detail(
 async def toggle_save_message(
     token: str, message_id: str, session_token: str = "", db: AsyncSession = Depends(get_db)
 ):
-    """Toggle save/unsave a message. Saved messages persist in permanent history."""
+    """Toggle save/unsave a message."""
     stmt = select(Inbox).where(Inbox.access_token == token)
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
@@ -377,7 +457,6 @@ async def toggle_save_message(
     if not message:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
 
-    # Toggle
     message.is_saved = not message.is_saved
     if message.is_saved:
         message.saved_by_session = session_token or token
@@ -387,8 +466,6 @@ async def toggle_save_message(
     await db.commit()
     return {"saved": message.is_saved, "message_id": str(message.id)}
 
-
-# ==================== EXPORT (.EML & HTML) ====================
 
 @router.get("/{token}/messages/{message_id}/export/eml")
 async def export_message_eml(token: str, message_id: str, db: AsyncSession = Depends(get_db)):
@@ -405,7 +482,6 @@ async def export_message_eml(token: str, message_id: str, db: AsyncSession = Dep
     if not message:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
 
-    # Build RFC822 Email Message
     eml = EmailMessage()
     eml["Subject"] = message.subject
     eml["From"] = message.from_address
@@ -436,7 +512,7 @@ async def export_message_eml(token: str, message_id: str, db: AsyncSession = Dep
 
 @router.get("/{token}/messages/{message_id}/export/html")
 async def export_message_html(token: str, message_id: str, db: AsyncSession = Depends(get_db)):
-    """Export message as a clean standalone HTML page with styled metadata."""
+    """Export message as a clean standalone HTML page."""
     stmt = select(Inbox).where(Inbox.access_token == token)
     res = await db.execute(stmt)
     inbox = res.scalar_one_or_none()
@@ -491,8 +567,6 @@ async def export_message_html(token: str, message_id: str, db: AsyncSession = De
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
-
-# ==================== TEST & ADMIN ====================
 
 @router.post("/{token}/test")
 async def send_test_email(token: str, db: AsyncSession = Depends(get_db)):
@@ -624,89 +698,3 @@ async def download_attachment(
             "Content-Disposition": f'attachment; filename="{attachment.filename}"'
         },
     )
-
-
-# ==================== STATS & SUPPORT ====================
-
-@router.get("/stats/{session_token}", response_model=StatsResponse)
-async def get_user_stats(session_token: str, db: AsyncSession = Depends(get_db)):
-    """Get metrics and usage statistics for user session."""
-    # Inboxes counts
-    inboxes_stmt = select(
-        func.count(Inbox.id).label("total"),
-        func.count(func.nullif(Inbox.is_active, False)).label("active")
-    ).where(Inbox.session_owner == session_token)
-    inboxes_res = await db.execute(inboxes_stmt)
-    inbox_counts = inboxes_res.first()
-    total_inboxes = inbox_counts.total if inbox_counts else 0
-    active_inboxes = inbox_counts.active if inbox_counts else 0
-
-    # Total messages received across inboxes
-    inbox_ids_stmt = select(Inbox.id).where(Inbox.session_owner == session_token)
-    
-    msgs_stmt = select(
-        func.count(Message.id).label("total_msgs"),
-        func.count(func.nullif(Message.is_saved, False)).label("saved_msgs")
-    ).where(Message.inbox_id.in_(inbox_ids_stmt))
-    msgs_res = await db.execute(msgs_stmt)
-    msg_counts = msgs_res.first()
-    total_msgs = msg_counts.total_msgs if msg_counts else 0
-    saved_msgs = msg_counts.saved_msgs if msg_counts else 0
-
-    # Top domains
-    # Extract domain from from_address
-    all_from_stmt = select(Message.from_address).where(Message.inbox_id.in_(inbox_ids_stmt))
-    all_from_res = await db.execute(all_from_stmt)
-    from_addresses = all_from_res.scalars().all()
-
-    domain_counts_dict = {}
-    for addr in from_addresses:
-        if "@" in addr:
-            dom = addr.split("@")[-1].strip().lower()
-        else:
-            dom = "otro"
-        domain_counts_dict[dom] = domain_counts_dict.get(dom, 0) + 1
-
-    sorted_domains = sorted(domain_counts_dict.items(), key=lambda x: x[1], reverse=True)[:5]
-    top_senders = [StatsDomainCount(domain=d, count=c) for d, c in sorted_domains]
-
-    # Messages by day (last 7 days)
-    days_dict = {}
-    now = datetime.now(timezone.utc)
-    for i in range(6, -1, -1):
-        day_str = (now - timedelta(days=i)).strftime("%Y-%m-%d")
-        days_dict[day_str] = 0
-
-    dates_stmt = select(Message.received_at).where(Message.inbox_id.in_(inbox_ids_stmt))
-    dates_res = await db.execute(dates_stmt)
-    for d in dates_res.scalars().all():
-        d_str = d.strftime("%Y-%m-%d")
-        if d_str in days_dict:
-            days_dict[d_str] += 1
-
-    messages_by_day = [StatsDayCount(date=d, count=c) for d, c in days_dict.items()]
-
-    return StatsResponse(
-        total_inboxes=total_inboxes,
-        active_inboxes=active_inboxes,
-        total_messages_received=total_msgs,
-        saved_messages_count=saved_msgs,
-        top_senders=top_senders,
-        messages_by_day=messages_by_day,
-    )
-
-
-@router.post("/support", response_model=SupportTicketResponse, status_code=status.HTTP_201_CREATED)
-async def submit_support_ticket(payload: SupportTicketCreate, db: AsyncSession = Depends(get_db)):
-    """Submit a user support or feedback ticket."""
-    ticket = SupportTicket(
-        session_token=payload.session_token,
-        name=payload.name.strip()[:100],
-        email=payload.email.strip()[:255],
-        subject=payload.subject.strip()[:255],
-        message=payload.message.strip(),
-    )
-    db.add(ticket)
-    await db.commit()
-    await db.refresh(ticket)
-    return ticket
